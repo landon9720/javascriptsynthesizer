@@ -1,0 +1,24 @@
+{
+  "name": "s",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "scripts": {
+    "build": "webpack -p --display-modules",
+    "serv": "webpack-dev-server --content-base dist/ --host 0.0.0.0",
+    "clean": "rm -rf ./node_modules; rm -rf ./dist"
+  },
+  "author": "Landon Kuhn",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.0",
+    "copy-webpack-plugin": "^4.1.1",
+    "webpack": "^3.6.0",
+    "webpack-dev-server": "^2.9.2"
+  }
+}
