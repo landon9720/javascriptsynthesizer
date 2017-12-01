@@ -3,6 +3,15 @@ const context = new AudioContext()
 window.addEventListener('unload', () => context.close())
 const F = context.sampleRate
 
+class Monad {
+    constructor(processAudio) {
+        this.processAudio = processAudio
+    }
+    call() {
+        return this.processAudio()
+    }
+}
+
 const scriptNodeFactory = (processAudio, inputChannels = 0, outputChannels = 1) => {
     const a = context.createScriptProcessor(
         0, // default buffer size
@@ -16,8 +25,7 @@ const scriptNodeFactory = (processAudio, inputChannels = 0, outputChannels = 1) 
     return a
 }
 
-const sin = (f = 440, A = 1.0) => {
-    console.log(`sin f=${f} A=${A}`)
+const sin = (f = 440, A = 1.0) => new Monad(() => {
     const omega = 2 * Math.PI * f / F
     let y0 = 0
     let y1 = Math.sin(omega)
@@ -34,10 +42,10 @@ const sin = (f = 440, A = 1.0) => {
         }
         return outputBuffer
     }
-}
+})
 
 const sum = (...inputs) => {
-    return () => {
+    return new Monad(() => {
         const outputBuffer = context.createBuffer(1, 1024, 44100)
         const output = outputBuffer.getChannelData(0)
         _.forEach(inputs, input => {
@@ -47,7 +55,7 @@ const sum = (...inputs) => {
             }
         })
         return outputBuffer
-    }
+    })
 }
 
 const a = []
@@ -59,7 +67,7 @@ for (let f = 75; f < 4400; f *= 2) {
 const tune = sum(...a)
 
 scriptNodeFactory(({ outputBuffer }) => {
-    const tuneOutputBuffer = tune()
+    const tuneOutputBuffer = tune.call()
     const input = tuneOutputBuffer.getChannelData(0)
     const output = outputBuffer.getChannelData(0)
     for (let i = 0; i < 1024; ++i) {
