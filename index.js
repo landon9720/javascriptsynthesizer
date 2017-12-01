@@ -1,63 +1,68 @@
 import _ from 'lodash'
 const context = new AudioContext()
+window.addEventListener('unload', () => context.close())
 const F = context.sampleRate
 
-const scriptNodeFactory = (audioprocess, inputChannels = 0, outputChannels = 1) => {
+const scriptNodeFactory = (processAudio, inputChannels = 0, outputChannels = 1) => {
     const a = context.createScriptProcessor(
         0, // default buffer size
         inputChannels,
         outputChannels
     )
     a.onaudioprocess = e => {
-        audioprocess(e)
+        processAudio(e)
         return e
     }
     return a
 }
 
 const sin = (f = 440, A = 1.0) => {
+    console.log(`sin f=${f} A=${A}`)
     const omega = 2 * Math.PI * f / F
     let y0 = 0
     let y1 = Math.sin(omega)
     const c = 2 * Math.cos(omega)
-    const k = 0.9999
-    return scriptNodeFactory(e => {
-        const output = e.outputBuffer.getChannelData(0)
+    const k = 1
+    return () => {
+        const outputBuffer = context.createBuffer(1, 1024, 44100)
+        const output = outputBuffer.getChannelData(0)
         for (let i = 0; i < output.length; i += 2) {
             output[i + 0] = y0 * A
             output[i + 1] = y1 * A
             y0 = c * y1 - k * y0
             y1 = c * y0 - k * y1
         }
-    })
+        return outputBuffer
+    }
 }
 
-const sum = (...audioNodes) => {
-    const result = scriptNodeFactory(e => {
-        const output = e.outputBuffer.getChannelData(0)
-        for (let i = 0; i < output.length; ++i) {
-            output[i] = 0
-        }
-        const inputs = _.map(audioNodes, audioNode =>
-            audioNode
-                .onaudioprocess({
-                    outputBuffer: context.createBuffer(
-                        e.outputBuffer.numberOfChannels,
-                        e.outputBuffer.length,
-                        e.outputBuffer.sampleRate
-                    ),
-                })
-                .outputBuffer.getChannelData(0)
-        )
+const sum = (...inputs) => {
+    return () => {
+        const outputBuffer = context.createBuffer(1, 1024, 44100)
+        const output = outputBuffer.getChannelData(0)
         _.forEach(inputs, input => {
-            for (let i = 0; i < input.length; ++i) {
-                output[i] += input[i]
+            const inputBuffer = input().getChannelData(0)
+            for (let i = 0; i < inputBuffer.length; ++i) {
+                output[i] += inputBuffer[i]
             }
         })
-    })
-    return result
+        return outputBuffer
+    }
 }
 
-sum(sin(300, 0.5), sin(600, 0.5), sin(900, 0.5)).connect(context.destination)
+const a = []
+for (let f = 75; f < 4400; f *= 2) {
+    a.push(sin(f * (1 + 0.0 / 12.0), 0.01))
+    a.push(sin(f * (1 + 8.0 / 12.0), 0.01))
+}
 
-setTimeout(() => context.close(), 10000)
+const tune = sum(...a)
+
+scriptNodeFactory(({ outputBuffer }) => {
+    const tuneOutputBuffer = tune()
+    const input = tuneOutputBuffer.getChannelData(0)
+    const output = outputBuffer.getChannelData(0)
+    for (let i = 0; i < 1024; ++i) {
+        output[i] = input[i]
+    }
+}).connect(context.destination)
