@@ -6,17 +6,20 @@ const F = context.sampleRate
 class Monad {
     constructor(processAudio, numberOfFrames = Number.POSITIVE_INFINITY) {
         this.numberOfFrames = numberOfFrames
-        this.counter = 0
-        const processAudioF = processAudio()
-        this.processAudio = () => {
-            if (this.counter < this.numberOfFrames) {
-                const r = processAudioF()
-                ++this.counter
-                return r
-            } else {
-                return context.createBuffer(1, 1024, 44100)
+        this.initialize = () => {
+            this.counter = 0
+            const processAudioF = processAudio()
+            this.processAudio = () => {
+                if (this.counter < this.numberOfFrames) {
+                    const r = processAudioF(this.counter, this.numberOfFrames)
+                    ++this.counter
+                    return r
+                } else {
+                    return context.createBuffer(1, 1024, 44100)
+                }
             }
         }
+        this.initialize()
     }
 }
 
@@ -51,6 +54,7 @@ const sin = (f = 440, A = 1.0, numberOfFrames) =>
 
 const sum = (...inputs) =>
     new Monad(() => {
+        _.forEach(inputs, i => i.initialize())
         return () => {
             const outputBuffer = context.createBuffer(1, 1024, 44100)
             const output = outputBuffer.getChannelData(0)
@@ -62,19 +66,71 @@ const sum = (...inputs) =>
             })
             return outputBuffer
         }
-    })
+    }, _.maxBy(inputs, i => i.numberOfFrames).numberOfFrames)
 
-const a = []
-for (let f = 60; f < 3000; f *= 2) {
-    a.push(sin(f * (1 + 0.0 / 12.0), 0.01, 100))
-    a.push(sin(f * (1 + 4.0 / 12.0), 0.01, 200))
-    a.push(sin(f * (1 + 8.0 / 12.0), 0.01, 300))
+const seq = (...inputs) =>
+    new Monad(() => {
+        _.forEach(inputs, i => i.initialize())
+        let i = 0
+        let input = inputs[i]
+        return () => {
+            if (input.counter === input.numberOfFrames) {
+                input = inputs[++i]
+            }
+            return input.processAudio()
+        }
+    }, _.sumBy(inputs, i => i.numberOfFrames))
+
+const loop = (input, count = Number.POSITIVE_INFINITY) =>
+    new Monad(() => {
+        input.initialize()
+        let i = 0
+        return () => {
+            if (input.counter === input.numberOfFrames && i < count) {
+                input.initialize()
+                ++i
+            }
+            return input.processAudio()
+        }
+    }, input.numberOfFrames * count)
+
+const gain = (input, factor) =>
+    new Monad(() => {
+        input.initialize()
+        return (counter, numberOfFrames) => {
+            const outputBuffer = context.createBuffer(1, 1024, 44100)
+            const output = outputBuffer.getChannelData(0)
+            const inputBuffer = input.processAudio().getChannelData(0)
+            for (let i = 0; i < inputBuffer.length; ++i) {
+                output[i] += inputBuffer[i] * factor(counter * 1024 + i, numberOfFrames * 1024)
+            }
+            return outputBuffer
+        }
+    }, input.numberOfFrames)
+
+const organ = (f, d) => {
+    // const a = []
+    // while (f < 3000) {
+    //     f *= 2
+    // }
+    // while (f > 10) {
+    //     a.push(sin(f, 0.1, d))
+    //     f /= 2
+    // }
+
+    return seq(
+        gain(sin(f, 0.5, 1), (a, b) => Math.pow(a / b, .1)),
+        sin(f, 0.5, d - 2),
+        gain(sin(f, 0.5, 1), (a, b) => 1 - Math.pow(a / b, .1)),
+    )
 }
 
-const tune = sum(...a, sin(120, 0.1))
+const fs = _.range(100, 1000, 7)
+const tune = seq(..._.map(fs, f => organ(f, 100)))
 
 scriptNodeFactory(({ outputBuffer }) => {
-    const tuneOutputBuffer = tune.processAudio()
+    const tuneOutputBuffer =
+        tune.counter < tune.numberOfFrames ? tune.processAudio() : context.createBuffer(1, 1024, 44100)
     const input = tuneOutputBuffer.getChannelData(0)
     const output = outputBuffer.getChannelData(0)
     for (let i = 0; i < 1024; ++i) {
