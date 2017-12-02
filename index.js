@@ -119,14 +119,50 @@ const organ = (f, d) => {
     // }
 
     return seq(
-        gain(sin(f, 0.5, 1), (a, b) => Math.pow(a / b, .1)),
-        sin(f, 0.5, d - 2),
-        gain(sin(f, 0.5, 1), (a, b) => 1 - Math.pow(a / b, .1)),
+        shave(trim(sin(f, 0.5, d))),
     )
 }
 
-const fs = _.range(100, 1000, 7)
-const tune = seq(..._.map(fs, f => organ(f, 100)))
+const shave = (input, w = 60) => new Monad(() => {
+    input.initialize()
+    return (counter, numberOfFrames) => {
+        if (counter === 0) {
+            const outputBuffer = context.createBuffer(1, 1024, 44100)
+            const output = outputBuffer.getChannelData(0)
+            const inputBuffer = input.processAudio().getChannelData(0)
+            for (let i = 0; i < inputBuffer.length; ++i) {
+                output[i] += inputBuffer[i]
+                if (i < w) {
+                    output[i] *= i / w
+                }
+            }
+            return outputBuffer
+        }
+        return input.processAudio()
+    }
+}, input.numberOfFrames)
+
+const trim = (input, w = 60) => new Monad(() => {
+    input.initialize()
+    return (counter, numberOfFrames) => {
+        if (counter < numberOfFrames - 1) {
+            return input.processAudio()
+        }
+        const outputBuffer = context.createBuffer(1, 1024, 44100)
+        const output = outputBuffer.getChannelData(0)
+        const inputBuffer = input.processAudio().getChannelData(0)
+        for (let i = 0; i < inputBuffer.length; ++i) {
+            output[i] += inputBuffer[i]
+            if (inputBuffer.length - i < w) {
+                output[i] *= (inputBuffer.length - i) / w
+            }
+        }
+        return outputBuffer
+    }
+}, input.numberOfFrames)
+
+const fs = _.range(80, 2000, 30)
+const tune = loop(seq(..._.map(fs, f => organ(f, 1))))
 
 scriptNodeFactory(({ outputBuffer }) => {
     const tuneOutputBuffer =
