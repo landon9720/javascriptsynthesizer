@@ -3,21 +3,7 @@ const context = new AudioContext()
 window.addEventListener('unload', () => context.close())
 const F = context.sampleRate
 
-class Monad {
-    constructor(processAudio, numberOfFrames = Number.POSITIVE_INFINITY) {
-        this.numberOfFrames = numberOfFrames
-        this.initialize = () => {
-            this.counter = 0
-            const processAudioF = processAudio()
-            this.processAudio = () => {
-                const r = processAudioF(this.counter, this.numberOfFrames)
-                ++this.counter
-                return r
-            }
-        }
-        this.initialize()
-    }
-}
+import Monad from './Monad'
 
 const scriptNodeFactory = (processAudio, inputChannels = 0, outputChannels = 1) => {
     const a = context.createScriptProcessor(1024, inputChannels, outputChannels)
