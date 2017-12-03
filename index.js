@@ -1,18 +1,7 @@
 import _ from 'lodash'
-const context = new AudioContext()
-window.addEventListener('unload', () => context.close())
-const F = context.sampleRate
-
+import { context, F } from './context'
 import Monad from './Monad'
-
-const scriptNodeFactory = (processAudio, inputChannels = 0, outputChannels = 1) => {
-    const a = context.createScriptProcessor(1024, inputChannels, outputChannels)
-    a.onaudioprocess = e => {
-        processAudio(e)
-        return e
-    }
-    return a
-}
+import scriptNodeFactory from './scriptNodeFactory'
 
 const sin = (f = 440, A = 1.0, numberOfFrames) =>
     new Monad(() => {
