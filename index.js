@@ -10,13 +10,9 @@ class Monad {
             this.counter = 0
             const processAudioF = processAudio()
             this.processAudio = () => {
-                if (this.counter < this.numberOfFrames) {
-                    const r = processAudioF(this.counter, this.numberOfFrames)
-                    ++this.counter
-                    return r
-                } else {
-                    return context.createBuffer(1, 1024, 44100)
-                }
+                const r = processAudioF(this.counter, this.numberOfFrames)
+                ++this.counter
+                return r
             }
         }
         this.initialize()
