@@ -3,8 +3,8 @@ import { context, F } from './context'
 import Monad from './Monad'
 import scriptNodeFactory from './scriptNodeFactory'
 
-const sin = (f = 440, A = 1.0, numberOfFrames) =>
-    new Monad(() => {
+function sin(f = 440, A = 1.0, numberOfFrames) {
+    return new Monad(() => {
         const omega = 2 * Math.PI * f / F
         let y0 = 0
         let y1 = Math.sin(omega)
@@ -22,9 +22,10 @@ const sin = (f = 440, A = 1.0, numberOfFrames) =>
             return outputBuffer
         }
     }, numberOfFrames)
+}
 
-const sum = (...inputs) =>
-    new Monad(() => {
+function sum(...inputs) {
+    return new Monad(() => {
         _.forEach(inputs, i => i.initialize())
         return () => {
             const outputBuffer = context.createBuffer(1, 1024, 44100)
@@ -38,9 +39,10 @@ const sum = (...inputs) =>
             return outputBuffer
         }
     }, _.maxBy(inputs, i => i.numberOfFrames).numberOfFrames)
+}
 
-const seq = (...inputs) =>
-    new Monad(() => {
+function seq(...inputs) {
+    return new Monad(() => {
         _.forEach(inputs, i => i.initialize())
         let i = 0
         let input = inputs[i]
@@ -51,9 +53,10 @@ const seq = (...inputs) =>
             return input.processAudio()
         }
     }, _.sumBy(inputs, i => i.numberOfFrames))
+}
 
-const loop = (input, count = Number.POSITIVE_INFINITY) =>
-    new Monad(() => {
+function loop(input, count = Number.POSITIVE_INFINITY) {
+    return new Monad(() => {
         input.initialize()
         let i = 0
         return () => {
@@ -64,9 +67,10 @@ const loop = (input, count = Number.POSITIVE_INFINITY) =>
             return input.processAudio()
         }
     }, input.numberOfFrames * count)
+}
 
-const gain = (input, factor) =>
-    new Monad(() => {
+function gain(input, factor) {
+    return new Monad(() => {
         input.initialize()
         return (counter, numberOfFrames) => {
             const outputBuffer = context.createBuffer(1, 1024, 44100)
@@ -78,8 +82,9 @@ const gain = (input, factor) =>
             return outputBuffer
         }
     }, input.numberOfFrames)
+}
 
-const organ = (f, d) => {
+function organ(f, d) {
     // const a = []
     // while (f < 3000) {
     //     f *= 2
@@ -89,48 +94,50 @@ const organ = (f, d) => {
     //     f /= 2
     // }
 
-    return seq(
-        shave(trim(sin(f, 0.5, d))),
-    )
+    return seq(shave(trim(sin(f, 0.5, d))))
 }
 
-const shave = (input, w = 60) => new Monad(() => {
-    input.initialize()
-    return (counter, numberOfFrames) => {
-        if (counter === 0) {
+function shave(input, w = 60) {
+    return new Monad(() => {
+        input.initialize()
+        return (counter, numberOfFrames) => {
+            if (counter === 0) {
+                const outputBuffer = context.createBuffer(1, 1024, 44100)
+                const output = outputBuffer.getChannelData(0)
+                const inputBuffer = input.processAudio().getChannelData(0)
+                for (let i = 0; i < inputBuffer.length; ++i) {
+                    output[i] += inputBuffer[i]
+                    if (i < w) {
+                        output[i] *= i / w
+                    }
+                }
+                return outputBuffer
+            }
+            return input.processAudio()
+        }
+    }, input.numberOfFrames)
+}
+
+function trim(input, w = 60) {
+    return new Monad(() => {
+        input.initialize()
+        return (counter, numberOfFrames) => {
+            if (counter < numberOfFrames - 1) {
+                return input.processAudio()
+            }
             const outputBuffer = context.createBuffer(1, 1024, 44100)
             const output = outputBuffer.getChannelData(0)
             const inputBuffer = input.processAudio().getChannelData(0)
             for (let i = 0; i < inputBuffer.length; ++i) {
                 output[i] += inputBuffer[i]
-                if (i < w) {
-                    output[i] *= i / w
+                if (inputBuffer.length - i < w) {
+                    output[i] *= (inputBuffer.length - i) / w
                 }
             }
             return outputBuffer
         }
-        return input.processAudio()
-    }
-}, input.numberOfFrames)
-
-const trim = (input, w = 60) => new Monad(() => {
-    input.initialize()
-    return (counter, numberOfFrames) => {
-        if (counter < numberOfFrames - 1) {
-            return input.processAudio()
-        }
-        const outputBuffer = context.createBuffer(1, 1024, 44100)
-        const output = outputBuffer.getChannelData(0)
-        const inputBuffer = input.processAudio().getChannelData(0)
-        for (let i = 0; i < inputBuffer.length; ++i) {
-            output[i] += inputBuffer[i]
-            if (inputBuffer.length - i < w) {
-                output[i] *= (inputBuffer.length - i) / w
-            }
-        }
-        return outputBuffer
-    }
-}, input.numberOfFrames)
+    }, input.numberOfFrames)
+}
 
 const fs = _.range(80, 2000, 30)
 const tune = loop(seq(..._.map(fs, f => organ(f, 1))))
