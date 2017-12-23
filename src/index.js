@@ -42,7 +42,7 @@ function row(key) {
 let tuneSequence = inputMatrix(
     `
     1358135185311351
-    2121212121212114
+    2121211121212114
     0000111100001111`,
     [row('value'), row('duration'), row('octave')]
 )
