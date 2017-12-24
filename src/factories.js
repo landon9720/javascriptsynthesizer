@@ -25,17 +25,18 @@ export function sin(f = 440, A = 1.0, numberOfFrames) {
     }, numberOfFrames)
 }
 
-export function square(f = 440, A = 1.0, numberOfFrames) {
+export function square(f = 440, A = 1.0, numberOfFrames, dutyFunction = () => 0.5) {
     const period = F / f
+    let absoluteIndex = 0
     return new AudioProcess(() => {
         return (counter, numberOfFrames) => {
             console.assert(counter < numberOfFrames)
             const outputBuffer = context.createBuffer(1, 1024, 44100)
             const output = outputBuffer.getChannelData(0)
             for (let i = 0; i < output.length; ++i) {
-                const b = (counter + i) % period
+                const b = (counter + absoluteIndex++) % period
                 const c = b / period
-                output[i] = (c < 0.5 ? 1 : -1) * A
+                output[i] = (c < dutyFunction((counter * 1024 + i) / (numberOfFrames * 1024)) ? 1 : -1) * A
             }
             return outputBuffer
         }
@@ -44,13 +45,14 @@ export function square(f = 440, A = 1.0, numberOfFrames) {
 
 export function saw(f = 440, A = 1.0, numberOfFrames) {
     const period = F / f
+    let absoluteIndex = 0
     return new AudioProcess(() => {
         return (counter, numberOfFrames) => {
             console.assert(counter < numberOfFrames)
             const outputBuffer = context.createBuffer(1, 1024, 44100)
             const output = outputBuffer.getChannelData(0)
             for (let i = 0; i < output.length; ++i) {
-                const b = (counter + i) % period
+                const b = (counter + absoluteIndex++) % period
                 const c = b / period
                 output[i] = c * A
             }
@@ -61,13 +63,14 @@ export function saw(f = 440, A = 1.0, numberOfFrames) {
 
 export function triangle(f = 440, A = 1.0, numberOfFrames) {
     const period = F / f
+    let absoluteIndex = 0
     return new AudioProcess(() => {
-        return(counter, numberOfFrames) => {
+        return (counter, numberOfFrames) => {
             console.assert(counter < numberOfFrames)
             const outputBuffer = context.createBuffer(1, 1024, 44100)
             const output = outputBuffer.getChannelData(0)
             for (let i = 0; i < output.length; ++i) {
-                const b = (counter + i) % period
+                const b = (counter + absoluteIndex++) % period
                 const c = b / period
                 const d = 0
                 output[i] = (c < 0.5 ? 1 : -1) * A

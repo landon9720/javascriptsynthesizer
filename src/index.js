@@ -1,7 +1,7 @@
 import './style.css'
 import _ from 'lodash'
 import { play } from './context'
-import { sin, square, saw, sum, seq, loop, sequence } from './factories'
+import { sin, square, saw, triangle, sum, seq, loop, sequence } from './factories'
 import { note, beat } from './fundamentals.js'
 import { nil } from './AudioProcess'
 import Sequencer from './Sequencer'
@@ -42,7 +42,7 @@ function row(key) {
 let tuneSequence = inputMatrix(
     `
     1358135185311351
-    2121211121212114
+    1111111111111114
     0000111100001111`,
     [row('value'), row('duration'), row('octave')]
 )
@@ -52,8 +52,12 @@ console.log('tuneSequence 2', tuneSequence.processSequence())
 tuneSequence = tuneSequence.repeat(4)
 console.log('tuneSequence 3', tuneSequence.processSequence())
 
-let tune = tuneSequence.toAudioProcess(e => sin(e.value, 0.1, e.duration))
+// let tune = tuneSequence.toAudioProcess(e => sin(e.value, 0.1, e.duration))
 // let tune = tuneSequence.toAudioProcess(e => borg(e.value, e.duration))
+let tune = seq(
+    square(440, .1, 100, a => a),
+    square(440, .1, 100, a => 1 - a),
+)
 console.log('tune length', tune.numberOfFrames)
 
 tune = tune.sample()

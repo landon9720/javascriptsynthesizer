@@ -21,7 +21,7 @@ function draw() {
     viz1context.lineWidth = 2
     viz1context.strokeStyle = 'rgb(150, 0, 0)'
     viz1context.beginPath()
-    const sliceWidth = viz1.width * 1.0 / bufferLength
+    const sliceWidth = 10 * viz1.width * 1.0 / bufferLength
     let x = 0
     for (let i = 0; i < bufferLength; i++) {
         const v = dataArray[i] / 128.0
@@ -62,6 +62,9 @@ function drawAlt() {
 drawAlt()
 
 export function play(tune) {
+
+    console.log(tune.processAudio().getChannelData(0))
+
     scriptNodeFactory(({ outputBuffer }) => {
         if (tune.counter % Math.pow(2, 5) === 0) {
             requestAnimationFrame(draw)
