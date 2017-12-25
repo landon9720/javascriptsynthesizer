@@ -65,7 +65,27 @@ export default class AudioProcess {
         }, frameDelayCount + this.numberOfFrames)
     }
     delayFine(sampleDelayCount) {
-
+        return new AudioProcess(() => {
+            this.initialize()
+            let inputBuffer
+            return (counter, numberOfFrames) => {
+                console.assert(counter < numberOfFrames)
+                const outputBuffer = context.createBuffer(1, 1024, 44100)
+                const output = outputBuffer.getChannelData(0)
+                if (inputBuffer) {
+                    for (let i = 0; i < sampleDelayCount; ++i) {
+                        output[i] = inputBuffer[i + 1024 - sampleDelayCount]
+                    }
+                }
+                if (counter < this.numberOfFrames) {
+                    inputBuffer = this.processAudio().getChannelData(0)
+                    for (let i = 0; i < 1024 - sampleDelayCount; ++i) {
+                        output[i + sampleDelayCount] = inputBuffer[i]
+                    }
+                }
+                return outputBuffer
+            }
+        }, this.numberOfFrames + 1)
     }
     adsr(
         {

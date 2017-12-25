@@ -39,28 +39,33 @@ function row(key) {
     }
 }
 
-let tuneSequence = inputMatrix(
-    `
-    1358135185311351
-    1111111111111114
-    0000111100001111`,
-    [row('value'), row('duration'), row('octave')]
-)
-console.log('tuneSequence 1', tuneSequence.processSequence())
-tuneSequence = tuneSequence.map(e => _.extend({}, e, { value: note(e.value, e.octave), duration: beat(e.duration) }))
-console.log('tuneSequence 2', tuneSequence.processSequence())
-tuneSequence = tuneSequence.repeat(4)
-console.log('tuneSequence 3', tuneSequence.processSequence())
+// let tuneSequence = inputMatrix(
+//     `
+//     1358135185311351
+//     1111111111111114
+//     0000111100001111`,
+//     [row('value'), row('duration'), row('octave')]
+// )
+// console.log('tuneSequence 1', tuneSequence.processSequence())
+// tuneSequence = tuneSequence.map(e => _.extend({}, e, { value: note(e.value, e.octave), duration: beat(e.duration) }))
+// console.log('tuneSequence 2', tuneSequence.processSequence())
+// tuneSequence = tuneSequence.repeat(4)
+// console.log('tuneSequence 3', tuneSequence.processSequence())
 
 // let tune = tuneSequence.toAudioProcess(e => sin(e.value, 0.1, e.duration))
 // let tune = tuneSequence.toAudioProcess(e => borg(e.value, e.duration))
-let tune = seq(
-    square(440, .1, 100, a => a),
-    square(440, .1, 100, a => 1 - a),
-)
-console.log('tune length', tune.numberOfFrames)
+// let tune = seq(
+//     square(440, .1, 100, a => a),
+//     square(440, .1, 100, a => 1 - a),
+// )
+let tune = seq(..._.map(_.range(0, 1024, 100), i => sum(
+    sin(440, 0.5, 100).delayFine(0),
+    sin(440, 0.5, 100).delayFine(i),
+)))
+
+console.log('tune length', tune.numberOfFrames, 'frames')
 
 tune = tune.sample()
-tune = loop(tune)
+// tune = loop(tune)
 
 setTimeout(() => play(tune), 1000)
