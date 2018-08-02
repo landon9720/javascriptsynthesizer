@@ -1,136 +1,170 @@
-import { context } from './context'
-import { sigmoid } from './fundamentals'
+import { context, makeAudioFrame } from './context'
+import { sigmoid, samplesPerFrame, beats, parameterFunction } from './fundamentals'
 
 export default class AudioProcess {
-    constructor(processAudio, numberOfFrames = Number.POSITIVE_INFINITY) {
-        this.numberOfFrames = numberOfFrames
+    constructor(processAudioFactory) {
         this.initialize = () => {
-            this.counter = 0
-            const processAudioF = processAudio()
+            this.frameCounter = 0
+            const processAudio = processAudioFactory()
             this.processAudio = () => {
-                const r = processAudioF(this.counter, this.numberOfFrames)
-                ++this.counter
+                const r = processAudio(this.frameCounter)
+                ++this.frameCounter
                 return r
             }
         }
         this.initialize()
     }
-    sample() {
-        console.assert(this.numberOfFrames !== Number.POSITIVE_INFINITY)
-        const inputArray = new Float32Array(new ArrayBuffer(this.numberOfFrames * 1024 * 4))
+    sample(numberOfFrames) {
+        const inputArray = new Float32Array(new ArrayBuffer(numberOfFrames * samplesPerFrame * 4))
         this.initialize()
-        for (let i = 0; i < this.numberOfFrames; ++i) {
+        for (let i = 0; i < numberOfFrames; ++i) {
             const inputBuffer = this.processAudio().getChannelData(0)
-            for (let j = 0; j < 1024; ++j) {
-                inputArray[i * 1024 + j] = inputBuffer[j]
+            for (let j = 0; j < samplesPerFrame; ++j) {
+                inputArray[i * samplesPerFrame + j] = inputBuffer[j]
             }
         }
         return new AudioProcess(() => {
-            return (counter, numberOfFrames) => {
-                console.assert(counter < numberOfFrames)
-                const outputBuffer = context.createBuffer(1, 1024, 44100)
-                const output = outputBuffer.getChannelData(0)
+            return frameCounter => {
+                const { outputBuffer, output } = makeAudioFrame()
                 for (let i = 0; i < output.length; ++i) {
-                    output[i] = inputArray[counter * 1024 + i]
+                    output[i] = inputArray[frameCounter * samplesPerFrame + i]
                 }
                 return outputBuffer
             }
-        }, this.numberOfFrames)
+        })
     }
-    gain(factor) {
+    toFunction() {
+        let inputBuffer
+        return sampleIndex => {
+            if (sampleIndex % samplesPerFrame === 0) {
+                inputBuffer = 0
+            }
+            if (!inputBuffer) {
+                inputBuffer = this.processAudio().getChannelData(0)
+            }
+            return inputBuffer[sampleIndex % samplesPerFrame]
+        }
+    }
+    multiply(factor) {
+        factor = parameterFunction(factor)
         return new AudioProcess(() => {
             this.initialize()
-            return (counter, numberOfFrames) => {
-                console.assert(counter < numberOfFrames)
-                const outputBuffer = context.createBuffer(1, 1024, 44100)
-                const output = outputBuffer.getChannelData(0)
+            return frameCounter => {
+                const { outputBuffer, output } = makeAudioFrame()
                 const inputBuffer = this.processAudio().getChannelData(0)
                 for (let i = 0; i < inputBuffer.length; ++i) {
-                    output[i] += inputBuffer[i] * factor(counter * 1024 + i, numberOfFrames * 1024)
+                    const sampleIndex = frameCounter * samplesPerFrame + i
+                    output[i] = inputBuffer[i] * factor(sampleIndex)
                 }
                 return outputBuffer
             }
-        }, this.numberOfFrames)
+        })
     }
-    delay(frameDelayCount) {
+    add(value) {
+        value = parameterFunction(value)
         return new AudioProcess(() => {
             this.initialize()
-            return (counter, numberOfFrames) => {
-                console.assert(counter < numberOfFrames)
-                if (counter < frameDelayCount) {
-                    return context.createBuffer(1, 1024, 44100)
+            return frameCounter => {
+                const { outputBuffer, output } = makeAudioFrame()
+                const inputBuffer = this.processAudio().getChannelData(0)
+                for (let i = 0; i < inputBuffer.length; ++i) {
+                    const sampleIndex = frameCounter * samplesPerFrame + i
+                    output[i] = inputBuffer[i] + value(sampleIndex)
+                }
+                return outputBuffer
+            }
+        })
+    }
+    delay(sampleCount) {
+        const frameCount = Math.ceil(sampleCount / samplesPerFrame)
+        const sampleRemainderCount = sampleCount % samplesPerFrame
+        let result = this
+        if (frameCount) {
+            result = result.delayFrames(frameCount)
+        }
+        if (sampleRemainderCount) {
+            result = result.delaySamples(sampleRemainderCount)
+        }
+        return result
+    }
+    delayFrames(frameCount) {
+        return new AudioProcess(() => {
+            this.initialize()
+            return frameCounter => {
+                if (frameCounter < frameCount) {
+                    const { outputBuffer } = makeAudioFrame()
+                    return outputBuffer
                 }
                 return this.processAudio()
             }
-        }, frameDelayCount + this.numberOfFrames)
+        })
     }
-    delayFine(sampleDelayCount) {
+    delaySamples(sampleCount) {
         return new AudioProcess(() => {
             this.initialize()
             let inputBuffer
-            return (counter, numberOfFrames) => {
-                console.assert(counter < numberOfFrames)
-                const outputBuffer = context.createBuffer(1, 1024, 44100)
-                const output = outputBuffer.getChannelData(0)
+            return () => {
+                const { outputBuffer, output } = makeAudioFrame()
                 if (inputBuffer) {
-                    for (let i = 0; i < sampleDelayCount; ++i) {
-                        output[i] = inputBuffer[i + 1024 - sampleDelayCount]
+                    for (let i = 0; i < sampleCount; ++i) {
+                        output[i] = inputBuffer[i + samplesPerFrame - sampleCount]
                     }
                 }
-                if (counter < this.numberOfFrames) {
-                    inputBuffer = this.processAudio().getChannelData(0)
-                    for (let i = 0; i < 1024 - sampleDelayCount; ++i) {
-                        output[i + sampleDelayCount] = inputBuffer[i]
-                    }
+                inputBuffer = this.processAudio().getChannelData(0)
+                for (let i = 0; i < samplesPerFrame - sampleCount; ++i) {
+                    output[i + sampleCount] = inputBuffer[i]
                 }
                 return outputBuffer
             }
-        }, this.numberOfFrames + 1)
+        })
+    }
+    loop(length) {
+        return new AudioProcess(() => {
+            this.initialize()
+            return () => this.processAudio()
+        })
     }
     adsr(
         {
-            A = 3000, // attack duration in samples
-            D = 3000, // decay duration in samples
-            S = .2, // sustain level
-            R = 3000, // release duration in samples
-            duration = 40, // overall duration in frames
+            A = beats(1 / 4),
+            D = beats(1 / 4),
+            S = beats(1 / 4),
+            R = beats(1 / 4),
+            sustainLevel = 0.5,
             attackFunction = sigmoid,
             decayFunction = sigmoid,
             releaseFunction = sigmoid,
         } = {}
     ) {
-        const sustain = duration * 1024 - A - D - R
         const factor = sampleNumber => {
             if (sampleNumber < A) {
                 return 1 * attackFunction(sampleNumber / A)
             }
             if (sampleNumber < A + D) {
-                return 1 - (1 - S) * decayFunction((sampleNumber - A) / D)
+                return 1 - (1 - sustainLevel) * decayFunction((sampleNumber - A) / D)
             }
-            if (sampleNumber < A + D + sustain) {
-                return S
+            if (sampleNumber < A + D + S) {
+                return sustainLevel
             }
-            if (sampleNumber < A + D + sustain + R) {
-                return S * releaseFunction((A + D + sustain + R - sampleNumber) / R)
+            if (sampleNumber < A + D + S + R) {
+                return sustainLevel * releaseFunction((A + D + S + R - sampleNumber) / R)
             }
-            console.assert()
+            return 0
         }
         return new AudioProcess(() => {
             this.initialize()
-            return (counter, numberOfFrames) => {
-                console.assert(counter < numberOfFrames)
-                const outputBuffer = context.createBuffer(1, 1024, 44100)
-                const output = outputBuffer.getChannelData(0)
+            return frameCounter => {
+                const { outputBuffer, output } = makeAudioFrame()
                 const inputBuffer = this.processAudio().getChannelData(0)
                 for (let i = 0; i < inputBuffer.length; ++i) {
-                    output[i] += inputBuffer[i] * factor(counter * 1024 + i)
+                    output[i] = inputBuffer[i] * factor(frameCounter * samplesPerFrame + i)
                 }
                 return outputBuffer
             }
-        }, duration)
+        }, this.numberOfFrames)
     }
 }
 
-export const nil = new AudioProcess(() => {
-    return () => context.createBuffer(1, 1024, 44100)
-})
+// export const nil = new AudioProcess(() => {
+//     return () => context.createBuffer(1, samplesPerFrame, 44100)
+// })

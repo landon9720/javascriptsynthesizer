@@ -1,11 +1,10 @@
 import './style.css'
 import _ from 'lodash'
 import { play } from './context'
-import { sin, square, saw, triangle, sum, seq, loop, sequence } from './factories'
-import { note, beat } from './fundamentals.js'
+import { value, sin, square, saw, triangle, sum, seq, loop, sequence } from './factories'
+import { note, beats, samplesPerFrame } from './fundamentals.js'
 import { nil } from './AudioProcess'
 import Sequencer from './Sequencer'
-import { borg } from './instruments'
 
 function inputMatrix(input, schema) {
     while (input[0] === '\n') {
@@ -25,10 +24,10 @@ function inputMatrix(input, schema) {
                 const char = lines[lineNumber][t]
                 return schema[lineNumber](char, e)
             },
-            { time: beat(t) }
+            { time: beats(t) }
         )
     })
-    return sequence(events)
+    return new Sequencer(() => events)
 }
 
 function row(key) {
@@ -46,26 +45,15 @@ function row(key) {
 //     0000111100001111`,
 //     [row('value'), row('duration'), row('octave')]
 // )
-// console.log('tuneSequence 1', tuneSequence.processSequence())
-// tuneSequence = tuneSequence.map(e => _.extend({}, e, { value: note(e.value, e.octave), duration: beat(e.duration) }))
-// console.log('tuneSequence 2', tuneSequence.processSequence())
-// tuneSequence = tuneSequence.repeat(4)
-// console.log('tuneSequence 3', tuneSequence.processSequence())
+// tuneSequence = tuneSequence.map(e => _.extend({}, e, { value: note(e.value, e.octave), duration: beats(e.duration) }))
 
-// let tune = tuneSequence.toAudioProcess(e => sin(e.value, 0.1, e.duration))
-// let tune = tuneSequence.toAudioProcess(e => borg(e.value, e.duration))
-// let tune = seq(
-//     square(440, .1, 100, a => a),
-//     square(440, .1, 100, a => 1 - a),
-// )
-let tune = seq(..._.map(_.range(0, 1024, 100), i => sum(
-    sin(440, 0.5, 100).delayFine(0),
-    sin(440, 0.5, 100).delayFine(i),
-)))
+// const bell = e => sin(e.value, e.duration).gain(sin(100)).adsr({ A: beats(0.3), D: beats(0.3), S: e.duration - beats(0.9), R: beats(0.3) })
 
-console.log('tune length', tune.numberOfFrames, 'frames')
+// let tune = tuneSequence.toAudioProcess(bell)
 
-tune = tune.sample()
-// tune = loop(tune)
+// let tune = sin(sin(1).multiply(100).add(440))
+let tune = sin(value(440).add(sin(1).multiply(100))).adsr({A: beats(4), D: beats(4), S: beats(6), R: beats(6) })
 
-setTimeout(() => play(tune), 1000)
+setTimeout(() => play(tune), 1)
+
+// ASPECT ORIENTED AUDIO PROGRAMMING

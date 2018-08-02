@@ -1,6 +1,6 @@
 export const context = new AudioContext()
 export const F = context.sampleRate
-import scriptNodeFactory from './scriptNodeFactory'
+import { samplesPerFrame } from './fundamentals'
 
 const analyser = context.createAnalyser()
 analyser.minDecibels = -90 // default -90
@@ -61,19 +61,25 @@ function drawAlt() {
 }
 drawAlt()
 
+function scriptNodeFactory(processAudio, inputChannels = 0, outputChannels = 1) {
+    const a = context.createScriptProcessor(samplesPerFrame, inputChannels, outputChannels)
+    a.onaudioprocess = e => {
+        processAudio(e)
+        return e
+    }
+    return a
+}
+
+let frameCounter = 0
 export function play(tune) {
-
-    console.log(tune.processAudio().getChannelData(0))
-
     scriptNodeFactory(({ outputBuffer }) => {
-        if (tune.counter % Math.pow(2, 5) === 0) {
+        if (frameCounter++ % Math.pow(2, 5) === 0) {
             requestAnimationFrame(draw)
         }
-        const tuneOutputBuffer =
-            tune.counter < tune.numberOfFrames ? tune.processAudio() : context.createBuffer(1, 1024, 44100)
+        const tuneOutputBuffer = tune.processAudio()
         const input = tuneOutputBuffer.getChannelData(0)
         const output = outputBuffer.getChannelData(0)
-        for (let i = 0; i < 1024; ++i) {
+        for (let i = 0; i < samplesPerFrame; ++i) {
             output[i] = input[i]
         }
     })
@@ -82,3 +88,9 @@ export function play(tune) {
 }
 
 window.addEventListener('unload', () => context.close())
+
+export function makeAudioFrame() {
+    const outputBuffer = context.createBuffer(1, samplesPerFrame, 44100)
+    const output = outputBuffer.getChannelData(0)
+    return { outputBuffer, output }
+}
