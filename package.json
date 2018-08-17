@@ -5,13 +5,16 @@
   "main": "",
   "scripts": {
     "build": "webpack -p --display-modules",
-    "serv": "webpack-dev-server --content-base dist/ --host 0.0.0.0",
+    "serv": "node dist/server.js",
     "clean": "rm -rf ./node_modules; rm -rf ./dist"
   },
   "author": "Landon Kuhn",
   "license": "UNLICENSED",
   "dependencies": {
-    "lodash": "^4.17.4"
+    "css-loader": "^1.0.0",
+    "express": "^4.16.3",
+    "lodash": "^4.17.4",
+    "style-loader": "^0.22.1"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",

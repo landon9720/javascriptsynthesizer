@@ -1,4 +1,4 @@
-export const context = new AudioContext()
+export const context = new OfflineAudioContext(2,44100*40,44100)
 export const F = context.sampleRate
 import { samplesPerFrame } from './fundamentals'
 
