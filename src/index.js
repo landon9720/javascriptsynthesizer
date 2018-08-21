@@ -52,7 +52,7 @@ function row(key) {
 // let tune = tuneSequence.toAudioProcess(bell)
 
 // let tune = sin(sin(1).multiply(100).add(440))
-let tune = sin(value(440).add(sin(1).multiply(100))).adsr({A: beats(4), D: beats(4), S: beats(6), R: beats(6) })
+let tune = sin(value(440).add(sin(1).multiply(100))).adsr({ A: beats(4), D: beats(4), S: beats(6), R: beats(6) })
 
 setTimeout(() => play(tune), 1)
 

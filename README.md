@@ -2,16 +2,10 @@
 
 `yarn run serv`
 
-# Menu
+# Example
 
 ```
-sin(freq, amp)
-square(freq, amp, cycle)
-saw(freq, amp)
-triangle(freq, amp)
-sum(inputs)
-seq(inputs)
-loop(input, count)
-gain(input, factor)
-delay(input, time)
+let tune = 
+    sin(value(440).add(sin(1).multiply(100)))
+    .adsr({ A: beats(4), D: beats(4), S: beats(6), R: beats(6) })
 ```
