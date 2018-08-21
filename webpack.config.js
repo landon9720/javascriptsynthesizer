@@ -2,16 +2,16 @@ const path = require('path')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
-    entry: {
-        index: './src/index.js',
-        audioworklet: './src/audioworklet.js',
-        server: './src/server.js',
-    },
+    entry: './src/index.js',
     output: {
-        filename: '[name].js',
+        filename: './index.js',
         path: path.resolve(__dirname, 'dist'),
     },
-    plugins: [new CopyWebpackPlugin([{ from: './index.html', to: 'index.html' }])],
+    plugins: [
+        new CopyWebpackPlugin([
+            { from: './index.html', to: 'index.html' },
+        ]),
+    ],
     resolve: {
         extensions: ['.js', '.json', '.jsx', '.css'],
     },
@@ -30,8 +30,6 @@ module.exports = {
     },
     node: {
         fs: 'empty',
-        net: 'empty',
     },
     devtool: 'eval-source-map',
-    target : 'node',
 }
