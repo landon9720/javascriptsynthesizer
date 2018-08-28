@@ -2,18 +2,15 @@ const path = require('path')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
-    entry: './src/index.js',
+    entry: ['./src/index.js', 'babel-polyfill'],
     output: {
         filename: './index.js',
         path: path.resolve(__dirname, 'dist'),
     },
     plugins: [
-        new CopyWebpackPlugin([
-            { from: './index.html', to: 'index.html' },
-        ]),
     ],
     resolve: {
-        extensions: ['.js', '.json', '.jsx', '.css'],
+        extensions: ['.js', '.json'],
     },
     module: {
         loaders: [
@@ -22,14 +19,11 @@ module.exports = {
                 exclude: /(node_modules)/,
                 loader: 'babel-loader',
             },
-            {
-                test: /\.css$/,
-                loader: 'style-loader!css-loader',
-            },
         ],
     },
     node: {
         fs: 'empty',
     },
     devtool: 'eval-source-map',
+    target: 'node',
 }

@@ -5,20 +5,25 @@
   "main": "",
   "scripts": {
     "build": "webpack -p --display-modules",
-    "serv": "webpack-dev-server --content-base dist/ --host 0.0.0.0",
+    "test": "jest",
+    "start": "node dist/index.js",
+    "play": "play -t raw -r 8000 -b 32 -e floating-point -c 1 tune.raw",
+    "view": "sox -t raw -r 8000 -b 32 -e floating-point -c 1 tune.raw -n spectrogram -x 1024 -Y 768 -h",
     "clean": "rm -rf ./node_modules; rm -rf ./dist"
   },
   "author": "Landon Kuhn",
   "license": "UNLICENSED",
   "dependencies": {
-    "lodash": "^4.17.4"
+    "babel-polyfill": "^6.26.0",
+    "lodash": "^4.17.4",
+    "source-map-support": "^0.5.9"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.0",
     "copy-webpack-plugin": "^4.1.1",
-    "webpack": "^3.6.0",
-    "webpack-dev-server": "^2.9.2"
+    "jest": "^23.5.0",
+    "webpack": "^3.6.0"
   }
 }

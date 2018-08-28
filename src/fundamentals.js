@@ -1,7 +1,7 @@
 
-export const samplesPerFrame = Math.pow(2, 11)
-export const framesPerBeat = 15
-export const beats = b => b * framesPerBeat * samplesPerFrame // samples per beat
+export const samplesPerFrame = Math.pow(2, 10)
+// export const framesPerBeat = 1
+// export const beats = b => b * 10 //framesPerBeat * samplesPerFrame // samples per beat
 
 export const basisFrequency = 440
 export const beautifulNumber = Math.pow(2, 1 / 12)
@@ -12,6 +12,8 @@ const b = -10
 export const sigmoid = x => 1 / (1 + Math.pow(Math.E, a + b * x))
 
 import AudioProcess from './AudioProcess'
+
+import _ from 'lodash'
 
 export function parameterFunction(p) {
     if (p instanceof AudioProcess) {
