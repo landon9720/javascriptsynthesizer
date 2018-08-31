@@ -24,6 +24,6 @@ module.exports = {
     node: {
         fs: 'empty',
     },
-    devtool: 'eval-source-map',
+    devtool: 'source-map',
     target: 'node',
 }

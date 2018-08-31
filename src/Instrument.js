@@ -1,29 +1,19 @@
-export default class Instrument {
-    constructor(audioProcessFactoryFactory) {
-        this.initialize = () => {
-            this.audioProcessFactory = audioProcessFactoryFactory()
-        }
-        this.initialize()
+import { superFactory } from './superFactory'
+
+export function instrumentFactoryFactory(audioProcessOptions) {
+    const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = audioProcessOptions
+    console.assert(samplesPerFrame)
+    console.assert(samplesPerBeat)
+    console.assert(samplesPerSecond)
+    console.assert(basisFrequency)
+    return {
+        bell: () => {
+            const { sin, note, value } = superFactory(audioProcessOptions)
+            let duration = 1
+            return e => {
+                duration = e.duration || duration
+                return sin(value(note(e.value))).adsr({ duration: duration * samplesPerBeat })
+            }
+        },
     }
 }
-
-import { beats, note } from './fundamentals'
-import { sin, sum } from './factories'
-
-export const bell = new Instrument(() => {
-    let duration = beats(1)
-    return e => {
-        duration = e.duration || duration
-        return sin(note(e.value)).multiply(0.7)
-    }
-        
-    //         sum(sin(note(e.value)), sin(note(e.value - 12)), sin(note(e.value + 24)))
-    //         .adsr({
-    //             A: beats(0.1),
-    //             D: beats(0.1),
-    //             S: beats(duration) - beats(0.3),
-    //             R: beats(0.1),
-    //         })
-    //         .multiply(0.3)
-    // }
-})

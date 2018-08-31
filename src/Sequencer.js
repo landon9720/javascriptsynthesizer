@@ -1,17 +1,23 @@
-import { sum } from './factories'
-import { beats } from './fundamentals.js'
+import _ from 'lodash'
+import { superFactory } from './superFactory'
+import AudioProcess from './AudioProcess'
 
 export default class Sequencer {
-    constructor(processSequence) {
+    constructor(options, processSequence) {
+        const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = (this.options = options)
+        console.assert(samplesPerFrame)
+        console.assert(samplesPerBeat)
+        console.assert(samplesPerSecond)
+        console.assert(basisFrequency)
         this.processSequence = processSequence
     }
     mix(sequencer) {
-        return new Sequencer(() => {
-            return [...this.processSequence(), ...sequencer.processSequence()]
+        return new Sequencer(this.options, () => {
+            return _.sortBy([...this.processSequence(), ...sequencer.processSequence()], e => e.time)
         })
     }
     map(mapEvent) {
-        return new Sequencer(() => {
+        return new Sequencer(this.options, () => {
             return this.processSequence().map(mapEvent)
         })
     }
@@ -19,7 +25,7 @@ export default class Sequencer {
         return this.map(e => _.extend({}, e, { time: e.time + beats }))
     }
     repeat(times, duration) {
-        return new Sequencer(() => {
+        return new Sequencer(this.options, () => {
             const inputSequence = this.processSequence()
             const result = []
             for (let i = 0; i < times; ++i) {
@@ -28,20 +34,19 @@ export default class Sequencer {
             return result
         })
     }
+    // 'instrument' is a function e => audioProcess
     toAudioProcess(instrument) {
+        if (instrument instanceof AudioProcess) {
+            const _i = instrument
+            instrument = () => _i
+        }
         const sequence = this.processSequence()
-        console.assert(sequence)
-        const audioProcessFactory = e => instrument.audioProcessFactory(e)
-        console.assert(audioProcessFactory)
-        return sum(..._.map(sequence, e => audioProcessFactory(e).delay(beats(e.time))))
+        const { sum } = superFactory(this.options)
+        return sum(..._.map(sequence, e => instrument(e).delay(e.time * this.options.samplesPerBeat)))
     }
     table() {
         console.table(this.processSequence(), ['time', 'value', 'duration'])
     }
-}
-
-export function sequence(events) {
-    return new Sequencer(() => events)
 }
 
 export function rowsToEvents(...rows) {
