@@ -1,23 +1,19 @@
 import _ from 'lodash'
-import { superFactory } from './superFactory'
-import AudioProcess from './AudioProcess'
 
 export default class Sequencer {
-    constructor(options, processSequence) {
-        const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = (this.options = options)
-        console.assert(samplesPerFrame)
-        console.assert(samplesPerBeat)
-        console.assert(samplesPerSecond)
-        console.assert(basisFrequency)
+    constructor(processSequence, duration) {
+        console.assert(processSequence instanceof Function, 'processSequence must be a function')
+        console.assert(!duration || _.isFinite(duration), 'sequencer duration')
         this.processSequence = processSequence
+        this.duration = duration
     }
     mix(sequencer) {
-        return new Sequencer(this.options, () => {
+        return new Sequencer(() => {
             return _.sortBy([...this.processSequence(), ...sequencer.processSequence()], e => e.time)
         })
     }
     map(mapEvent) {
-        return new Sequencer(this.options, () => {
+        return new Sequencer(() => {
             return this.processSequence().map(mapEvent)
         })
     }
@@ -25,7 +21,7 @@ export default class Sequencer {
         return this.map(e => _.extend({}, e, { time: e.time + beats }))
     }
     loop(times, duration) {
-        return new Sequencer(this.options, () => {
+        return new Sequencer(() => {
             const inputSequence = this.processSequence()
             const result = []
             for (let i = 0; i < times; ++i) {
@@ -33,16 +29,6 @@ export default class Sequencer {
             }
             return result
         })
-    }
-    // 'instrument' is a function e => audioProcess
-    toAudioProcess(instrument) {
-        if (instrument instanceof AudioProcess) {
-            const _i = instrument
-            instrument = () => _i
-        }
-        const sequence = this.processSequence()
-        const { mix } = superFactory(this.options)
-        return mix(..._.map(sequence, e => instrument(e).delay(e.time * this.options.samplesPerBeat)))
     }
     table() {
         const events = this.processSequence()
@@ -69,7 +55,7 @@ export function charCodeValueInterpreter(charCode) {
     } else if (charCode >= 97 && charCode <= 122) {
         // lower-case letters
         return charCode - 87
-    } else if (charCode === 32) {
+    } else if (charCode === 32 || !charCode) {
         // space
         return null
     } else {

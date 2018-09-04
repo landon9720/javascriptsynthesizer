@@ -26,15 +26,15 @@ test('sin(1)', async () => {
     assertFrame(frame2, [0, 1, 0, -1])
 })
 
-test('sin(1).sample()', async () => {
-    const { sin } = superFactory(options(4, 4))
-    const audioProcess = await sin(1).sample(2)
-    const processAudio = await audioProcess.initialize()
-    const frame1 = await processAudio()
-    assertFrame(frame1, [0, 1, 0, -1])
-    const frame2 = await processAudio()
-    assertFrame(frame2, [0, 1, 0, -1])
-})
+// test('sin(1).sample()', async () => {
+//     const { sin } = superFactory(options(4, 4))
+//     const audioProcess = await sin(1).sample(2)
+//     const processAudio = await audioProcess.initialize()
+//     const frame1 = await processAudio()
+//     assertFrame(frame1, [0, 1, 0, -1])
+//     const frame2 = await processAudio()
+//     assertFrame(frame2, [0, 1, 0, -1])
+// })
 
 test('sin(1).gain(.5).add(.1)', async () => {
     const { sin } = superFactory(options(4, 4))

@@ -232,12 +232,6 @@ atob@^2.1.1:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/atob/-/atob-2.1.2.tgz#6d9517eb9e030d2436666651e86bd9f6f13533c9"
 
-await-mutex@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/await-mutex/-/await-mutex-1.0.2.tgz#0b2428e58f4a39415f461f9298fb47d94d0b9991"
-  dependencies:
-    babel-runtime "~6.3.0"
-
 aws-sign2@~0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.7.0.tgz#b46e890934a9591f2d2f6f86d7e6a9f1b3fe76a8"
@@ -714,12 +708,6 @@ babel-runtime@^6.18.0, babel-runtime@^6.22.0, babel-runtime@^6.26.0:
     core-js "^2.4.0"
     regenerator-runtime "^0.11.0"
 
-babel-runtime@~6.3.0:
-  version "6.3.19"
-  resolved "https://registry.yarnpkg.com/babel-runtime/-/babel-runtime-6.3.19.tgz#f2db696c3c8c379881e2a53665e02187074dc681"
-  dependencies:
-    core-js "^1.2.0"
-
 babel-template@^6.16.0, babel-template@^6.24.1, babel-template@^6.26.0:
   version "6.26.0"
   resolved "https://registry.yarnpkg.com/babel-template/-/babel-template-6.26.0.tgz#de03e2d16396b069f46dd9fff8521fb1a0e35e02"
@@ -1184,10 +1172,6 @@ copy-webpack-plugin@^4.1.1:
     minimatch "^3.0.4"
     p-limit "^1.0.0"
     serialize-javascript "^1.4.0"
-
-core-js@^1.2.0:
-  version "1.2.7"
-  resolved "https://registry.yarnpkg.com/core-js/-/core-js-1.2.7.tgz#652294c14651db28fa93bd2d5ff2983a4f08c636"
 
 core-js@^2.4.0, core-js@^2.5.0:
   version "2.5.7"

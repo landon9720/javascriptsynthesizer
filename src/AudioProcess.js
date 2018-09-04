@@ -1,8 +1,11 @@
 import fs from 'fs'
+import { spawn } from 'child_process'
+import path from 'path'
 import _ from 'lodash'
 import AudioProcessReadable from './AudioProcessReadable'
 import { makeAudioFrame } from './context'
 import parameterFunction from './parameterFunction'
+import { SuperFactory } from './SuperFactory'
 
 // AudioProcess encapsulates a function that takes a frame counter and returns a frame of data
 //   js file: export default function eg sin
@@ -11,21 +14,25 @@ import parameterFunction from './parameterFunction'
 // Parameters are AudioProcesses
 export default class AudioProcess {
     constructor(options, initialize) {
-        console.assert(options)
+        console.assert(_.isObject(options), 'options must be an object')
+        console.assert(_.isFunction(initialize), 'initialize must be a function')
         const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = (this.options = options)
         console.assert(samplesPerFrame)
         console.assert(samplesPerBeat)
         console.assert(samplesPerSecond)
         console.assert(basisFrequency)
-        this.frameCounter = 0
         this.initialize = async () => {
-            this.frameCounter = 0
+            let frameCounter = 0
+            let done = false
             try {
                 const processAudio = await initialize()
                 return async () => {
                     try {
-                        const frame = await processAudio(this.frameCounter++)
-                        console.assert(frame, 'processAudio no frame returned')
+                        if (done) return
+                        const frame = await processAudio(frameCounter++)
+                        if (!frame) {
+                            done = true
+                        }
                         return frame
                     } catch (e) {
                         console.error('processAudio exception', e)
@@ -35,6 +42,31 @@ export default class AudioProcess {
                 console.error('initialize exception', e)
             }
         }
+        this.id = nextAudioProcessId++
+    }
+    duration(durationSamples) {
+        console.assert(_.isFinite(durationSamples), 'durationSamples must be a number')
+        return new AudioProcess(this.options, async () => {
+            const processAudio = await this.initialize()
+            return frameCounter => {
+                if (frameCounter * this.options.samplesPerFrame > durationSamples) {
+                    return
+                }
+                return processAudio()
+            }
+        })
+    }
+    then(...inputs) {
+        const { ordered } = new SuperFactory(this.options)
+        return ordered(...[this, ...inputs])
+    }
+    loop(times) {
+        console.assert(_.isFinite(times), 'times must be a number')
+        let result = this
+        while (--times > 0) {
+            result = result.then(this)
+        }
+        return result
     }
     offset(offsetSamples) {
         if (_.isFinite(offsetSamples)) {
@@ -44,49 +76,17 @@ export default class AudioProcess {
             return this.options.offset
         }
     }
-    async sample(numberOfFrames) {
-        const { samplesPerFrame } = this.options
-        const inputArray = new Float32Array(new ArrayBuffer(numberOfFrames * samplesPerFrame * 4))
-        const processAudio = await this.initialize()
-        for (let i = 0; i < numberOfFrames; ++i) {
-            const inputBuffer = await processAudio()
-            for (let j = 0; j < samplesPerFrame; ++j) {
-                inputArray[i * samplesPerFrame + j] = inputBuffer[j]
-            }
-        }
-        return new AudioProcess(this.options, () => {
-            return frameCounter => {
-                const outputBuffer = makeAudioFrame(this.options)
-                for (let i = 0; i < outputBuffer.length; ++i) {
-                    outputBuffer[i] = inputArray[frameCounter * samplesPerFrame + i]
-                }
-                return outputBuffer
-            }
-        })
-    }
-    // toFunction() {
-    //     let { samplesPerFrame } = this.options
-    //     let inputBufferPromise
-    //     return async sampleIndex => {
-    //         if (sampleIndex % samplesPerFrame === 0) {
-    //             inputBufferPromise = null
-    //         }
-    //         if (!inputBufferPromise) {
-    //             inputBufferPromise = this.processAudio()
-    //         }
-    //         const inputBuffer = await inputBufferPromise
-    //         return inputBuffer[sampleIndex % samplesPerFrame]
-    //     }
-    // }
     gain(factor) {
         factor = parameterFunction(this.options, factor)
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
             const factorProcessAudio = await factor.initialize()
             return async () => {
-                const outputBuffer = makeAudioFrame(this.options)
                 const inputBuffer = await processAudio()
+                if (!inputBuffer) return
                 const factorBuffer = await factorProcessAudio()
+                if (!factorBuffer) return
+                const outputBuffer = makeAudioFrame(this.options)
                 for (let i = 0; i < inputBuffer.length; ++i) {
                     outputBuffer[i] = inputBuffer[i] * factorBuffer[i]
                 }
@@ -100,9 +100,11 @@ export default class AudioProcess {
             const processAudio = await this.initialize()
             const valueProcessAudio = await value.initialize()
             return async () => {
-                const outputBuffer = makeAudioFrame(this.options)
                 const inputBuffer = await processAudio()
+                if (!inputBuffer) return
                 const valueBuffer = await valueProcessAudio()
+                if (!valueBuffer) return
+                const outputBuffer = makeAudioFrame(this.options)
                 for (let i = 0; i < inputBuffer.length; ++i) {
                     outputBuffer[i] = inputBuffer[i] + valueBuffer[i]
                 }
@@ -140,16 +142,25 @@ export default class AudioProcess {
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
             let inputBuffer
+            let done = false
             return async () => {
-                const outputBuffer = makeAudioFrame(this.options)
+                let outputBuffer
                 if (inputBuffer) {
+                    outputBuffer = outputBuffer || makeAudioFrame(this.options)
                     for (let i = 0; i < sampleCount; ++i) {
                         outputBuffer[i] = inputBuffer[i + samplesPerFrame - sampleCount]
                     }
                 }
+                inputBuffer = null
+                if (done) return outputBuffer
                 inputBuffer = await processAudio()
-                for (let i = 0; i < samplesPerFrame - sampleCount; ++i) {
-                    outputBuffer[i + sampleCount] = inputBuffer[i]
+                if (inputBuffer) {
+                    outputBuffer = outputBuffer || makeAudioFrame(this.options)
+                    for (let i = 0; i < samplesPerFrame - sampleCount; ++i) {
+                        outputBuffer[i + sampleCount] = inputBuffer[i]
+                    }
+                } else {
+                    done = true
                 }
                 return outputBuffer
             }
@@ -184,33 +195,66 @@ export default class AudioProcess {
             }
             return 0
         }
-        return new AudioProcess(
-            this.options,
-            async () => {
-                const processAudio = await this.initialize()
-                return async frameCounter => {
-                    const outputBuffer = makeAudioFrame(this.options)
-                    const inputBuffer = await processAudio()
-                    for (let i = 0; i < inputBuffer.length; ++i) {
-                        outputBuffer[i] = inputBuffer[i] * factor(frameCounter * this.options.samplesPerFrame + i)
-                    }
-                    return outputBuffer
+        return new AudioProcess(this.options, async () => {
+            const processAudio = await this.initialize()
+            return async frameCounter => {
+                const inputBuffer = await processAudio()
+                if (!inputBuffer) return
+                const outputBuffer = makeAudioFrame(this.options)
+                for (let i = 0; i < inputBuffer.length; ++i) {
+                    outputBuffer[i] = inputBuffer[i] * factor(frameCounter * this.options.samplesPerFrame + i)
                 }
-            },
-            this.numberOfFrames
-        )
+                return outputBuffer
+            }
+        }).duration(A + D + S + R)
     }
-    writeFile(fileName, tuneLengthSeconds) {
+    async writeFile(fileName) {
         const writer = fs.createWriteStream(fileName)
         writer.on('error', e => {
             console.error('writer error', e)
         })
-        const tuneFrameCount = Math.ceil(
-            (tuneLengthSeconds * this.options.samplesPerSecond) / this.options.samplesPerFrame
-        )
-        new AudioProcessReadable(this, tuneFrameCount).pipe(writer)
+        return new Promise((resolve, reject) => {
+            const readable = new AudioProcessReadable(this).pipe(writer)
+            readable.on('finish', () => {
+                resolve()
+            })
+            readable.on('error', e => {
+                reject(e)
+            })
+        })
+    }
+    spawn(commandFactory) {
+        console.assert(_.isFunction(commandFactory), 'commandFactory must be a function')
+        return new AudioProcess(this.options, async () => {
+            const dir = './temp'
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir)
+            }
+            const tempFile = `${dir}/${this.id}`
+            const inputFile = `${tempFile}-in.raw`
+            await this.writeFile(inputFile)
+            const outputFile = `${tempFile}-out.raw`
+            const [command, args] = commandFactory(
+                path.join(process.cwd(), inputFile),
+                path.join(process.cwd(), outputFile)
+            )
+            await runProcess(command, args)
+            const { readFile } = new SuperFactory(this.options)
+            const processedFile = readFile(outputFile)
+            const audioProcess = await processedFile.initialize()
+            return () => audioProcess()
+        })
+    }
+    pitch(cents) {
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
+        return this.spawn((inputFile, outputFile) => [
+            'sox',
+            `${fopts} ${inputFile} ${fopts} ${outputFile} pitch ${cents} 10`,
+        ])
     }
 }
+
+let nextAudioProcessId = 0
 
 const a = 5
 const b = -10
@@ -229,6 +273,24 @@ export function audioProcessOptionsFactory(bpm) {
         basisFrequency,
         offset,
     }
-    console.log(options)
     return options
+}
+
+async function runProcess(command, args) {
+    await new Promise((resolve, reject) => {
+        const sox = spawn(command, args.split(' '), {})
+        sox.stdout.on('data', data => {
+            console.log(`${data}`)
+        })
+        sox.stderr.on('data', data => {
+            console.error(`${data}`)
+        })
+        sox.on('close', code => {
+            if (code === 0) {
+                resolve()
+            } else {
+                reject({ code })
+            }
+        })
+    })
 }

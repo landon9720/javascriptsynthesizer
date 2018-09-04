@@ -4,25 +4,21 @@ import AudioProcess from './AudioProcess'
 
 // adapts a AudioProcess for use as a stream source (eg write to file)
 export default class AudioProcessReadable extends Readable {
-    constructor(audioProcess, frameLength) {
+    constructor(audioProcess) {
         super()
-        console.assert(audioProcess instanceof AudioProcess)
-        console.assert(frameLength)
+        console.assert(audioProcess instanceof AudioProcess, 'audioProcess is not AudioProcess')
         this.audioProcess = audioProcess
-        this.frameLength = frameLength
-        this.frameCounter = 0
     }
     async _read() {
-        let ok = true
-        if (this.frameCounter === 0) {
+        if (!this.processAudio) {
             this.processAudio = await this.audioProcess.initialize()
         }
-        if (ok && this.frameCounter++ < this.frameLength) {
-            const outputBuffer = await this.processAudio()
-            const data = Buffer.from(outputBuffer.buffer)
-            ok = this.push(data)
-        } else if (this.frameCounter > this.frameLength) {
+        const outputBuffer = await this.processAudio()
+        if (!outputBuffer) {
             this.push(null)
+            return
         }
+        const data = Buffer.from(outputBuffer.buffer)
+        this.push(data)
     }
 }
