@@ -24,7 +24,7 @@ export default class Sequencer {
     delay(beats) {
         return this.map(e => _.extend({}, e, { time: e.time + beats }))
     }
-    repeat(times, duration) {
+    loop(times, duration) {
         return new Sequencer(this.options, () => {
             const inputSequence = this.processSequence()
             const result = []
@@ -41,11 +41,39 @@ export default class Sequencer {
             instrument = () => _i
         }
         const sequence = this.processSequence()
-        const { sum } = superFactory(this.options)
-        return sum(..._.map(sequence, e => instrument(e).delay(e.time * this.options.samplesPerBeat)))
+        const { mix } = superFactory(this.options)
+        return mix(..._.map(sequence, e => instrument(e).delay(e.time * this.options.samplesPerBeat)))
     }
     table() {
-        console.table(this.processSequence(), ['time', 'value', 'duration'])
+        const events = this.processSequence()
+        const keys = Array.from(new Set(_.flatMap(events, e => Object.keys(e))))
+        console.table(events, keys)
+    }
+    scale(factor) {
+        return this.map(e => Object.assign({}, e, { time: e.time * factor }))
+    }
+}
+
+export class Row {
+    constructor(key, input, mapCharCodeToValue) {
+        this.key = key.trim()
+        this.input = input
+        this.mapCharCodeToValue = mapCharCodeToValue
+    }
+}
+
+export function charCodeValueInterpreter(charCode) {
+    if (charCode >= 48 && charCode <= 57) {
+        // numbers
+        return charCode - 48
+    } else if (charCode >= 97 && charCode <= 122) {
+        // lower-case letters
+        return charCode - 87
+    } else if (charCode === 32) {
+        // space
+        return null
+    } else {
+        console.assert(true, `invalid charCode ${charCode}`)
     }
 }
 
@@ -57,17 +85,11 @@ export function rowsToEvents(...rows) {
             time: i,
         }
         for (let j = 0; j < rows.length; ++j) {
-            const charCode = rows[j].input.charCodeAt(i)
-            if (charCode >= 48 && charCode <= 57) {
-                // numbers
-                event[rows[j].key] = charCode - 48
-            } else if (charCode >= 97 && charCode <= 122) {
-                // lower-case letters
-                event[rows[j].key] = charCode - 87
-            } else if (charCode === 32) {
-                // space
-            } else {
-                console.assert()
+            const row = rows[j]
+            const charCode = row.input.charCodeAt(i)
+            const value = row.mapCharCodeToValue(charCode)
+            if (value !== null) {
+                event[row.key] = value
             }
         }
         if (_.size(event) > 1) {
@@ -75,11 +97,4 @@ export function rowsToEvents(...rows) {
         }
     }
     return events
-}
-
-export function row(key, input) {
-    return {
-        key: key.trim(),
-        input,
-    }
 }

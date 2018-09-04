@@ -1,3 +1,6 @@
+import fs from 'fs'
+import _ from 'lodash'
+import AudioProcessReadable from './AudioProcessReadable'
 import { makeAudioFrame } from './context'
 import parameterFunction from './parameterFunction'
 
@@ -20,17 +23,25 @@ export default class AudioProcess {
             try {
                 const processAudio = await initialize()
                 return async () => {
-                    try { 
+                    try {
                         const frame = await processAudio(this.frameCounter++)
                         console.assert(frame, 'processAudio no frame returned')
                         return frame
                     } catch (e) {
                         console.error('processAudio exception', e)
                     }
-                }   
+                }
             } catch (e) {
                 console.error('initialize exception', e)
             }
+        }
+    }
+    offset(offsetSamples) {
+        if (_.isFinite(offsetSamples)) {
+            this.options = Object.assign({}, this.options, { offset: offsetSamples })
+            return this
+        } else {
+            return this.options.offset
         }
     }
     async sample(numberOfFrames) {
@@ -189,8 +200,35 @@ export default class AudioProcess {
             this.numberOfFrames
         )
     }
+    writeFile(fileName, tuneLengthSeconds) {
+        const writer = fs.createWriteStream(fileName)
+        writer.on('error', e => {
+            console.error('writer error', e)
+        })
+        const tuneFrameCount = Math.ceil(
+            (tuneLengthSeconds * this.options.samplesPerSecond) / this.options.samplesPerFrame
+        )
+        new AudioProcessReadable(this, tuneFrameCount).pipe(writer)
+    }
 }
 
 const a = 5
 const b = -10
 export const sigmoid = x => 1 / (1 + Math.pow(Math.E, a + b * x))
+
+export function audioProcessOptionsFactory(bpm) {
+    const samplesPerFrame = Math.pow(2, 14)
+    const samplesPerSecond = 44100
+    const samplesPerBeat = Math.round((samplesPerSecond * 60) / bpm)
+    const basisFrequency = 440
+    const offset = 0
+    const options = {
+        samplesPerFrame,
+        samplesPerSecond,
+        samplesPerBeat,
+        basisFrequency,
+        offset,
+    }
+    console.log(options)
+    return options
+}

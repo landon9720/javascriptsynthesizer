@@ -1,5 +1,8 @@
 import { superFactory } from './superFactory'
 
+// An instrument is a function in the form e (with value) to AudioProcess
+// A drum is a function in the form e (without value) to AudioProcess
+
 export function instrumentFactoryFactory(audioProcessOptions) {
     const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = audioProcessOptions
     console.assert(samplesPerFrame)

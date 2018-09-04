@@ -129,6 +129,26 @@ export function superFactory(audioProcessOptions) {
             })
         },
 
+        mix(...inputs) {
+            const maxOffset = _(inputs).map(ap => ap.offset()).max()
+            return new AudioProcess(audioProcessOptions, async () => {
+                const audioProcesses = _.map(inputs, ap => {
+                    return ap.delay(maxOffset - ap.offset())
+                })
+                const processAudios = await Promise.all(_.map(audioProcesses, ap => ap.initialize()))
+                return async () => {
+                    const outputBuffer = makeAudioFrame(audioProcessOptions)
+                    const inputBuffers = await Promise.all(_.map(processAudios, processAudio => processAudio()))
+                    _.forEach(inputBuffers, inputBuffer => {
+                        for (let i = 0; i < inputBuffer.length; ++i) {
+                            outputBuffer[i] += inputBuffer[i]
+                        }
+                    })
+                    return outputBuffer
+                }
+            }).offset(maxOffset)
+        },
+
         // export function seq(...inputs) {
         //     return new AudioProcess(() => {
         //         _.forEach(inputs, i => i.initialize())

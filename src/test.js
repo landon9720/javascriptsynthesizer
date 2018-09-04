@@ -3,7 +3,7 @@ import { superFactory } from './superFactory'
 import parameterFunction from './parameterFunction';
 
 function options(samplesPerFrame = 1, samplesPerSecond = 1, samplesPerBeat = 1) {
-    return { samplesPerFrame, samplesPerSecond, samplesPerBeat }
+    return { samplesPerFrame, samplesPerSecond, samplesPerBeat, offset: 0 }
 }
 
 function assertFrame(frame, values) {
@@ -142,12 +142,12 @@ test('delay', async () => {
 //     expect(await f(0)).toBe(0)
 // })
 
-test('Sequencer.mix.delay.repeat', async () => {
+test('Sequencer.mix.delay.loop', async () => {
     const { sequencer } = superFactory(options(4, 4))
     const r = sequencer([{ time: 1 }])
         .mix(sequencer([{ time: 2 }]))
         .delay(1)
-        .repeat(2, 3)
+        .loop(2, 3)
         .processSequence()
     expect(r).toEqual([{ time: 2 }, { time: 3 }, { time: 5 }, { time: 6 }])
 })
