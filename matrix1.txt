@@ -1,5 +1,8 @@
-    |                |
-tick|0000000000000000|
-kick|1 1 1 1 1 1 1 1 |
-jar |0 0 4 4 5 5 4 4 |
+         |                |
+sin       049c            
+square        048b        
+saw               048b    
+triangle              048b
+duration |1111111111111111|
+
 

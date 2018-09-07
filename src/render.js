@@ -1,13 +1,16 @@
 import { SuperFactory } from './SuperFactory'
 import AudioProcess, { audioProcessOptionsFactory } from './AudioProcess'
 import fs from 'fs'
+
 ;(async function() {
     try {
-        const options = audioProcessOptionsFactory(120)
+        const options = audioProcessOptionsFactory()
         const { samplesPerFrame, samplesPerBeat, samplesPerSecond, basisFrequency } = options
         const {
             sin,
             square,
+            saw,
+            triangle,
             sum,
             mix,
             ordered,
@@ -15,7 +18,6 @@ import fs from 'fs'
             readFile,
             beats,
             note,
-            sequencer,
             matrix,
             sequencerToAudioProcess,
             nullAudioProcess,
@@ -29,6 +31,8 @@ import fs from 'fs'
             'basisFrequency',
             'sin',
             'square',
+            'saw',
+            'triangle',
             'sum',
             'mix',
             'ordered',
@@ -36,7 +40,6 @@ import fs from 'fs'
             'readFile',
             'beats',
             'note',
-            'sequencer',
             'matrix',
             'sequencerToAudioProcess',
             'nullAudioProcess',
@@ -50,6 +53,8 @@ import fs from 'fs'
             basisFrequency,
             sin,
             square,
+            saw,
+            triangle,
             sum,
             mix,
             ordered,
@@ -57,7 +62,6 @@ import fs from 'fs'
             readFile,
             beats,
             note,
-            sequencer,
             matrix,
             sequencerToAudioProcess,
             nullAudioProcess,

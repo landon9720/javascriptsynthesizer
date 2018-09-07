@@ -8,7 +8,7 @@
     "test": "jest",
     "render": "node dist/index.js",
     "play": "play -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw",
-    "view": "sox -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw -n spectrogram -X 80 -Y 1000 -h -r",
+    "view": "sox -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw -n spectrogram -X 80 -Y 700 -h -r",
     "stat": "sox -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw -n stat",
     "clean": "rm -rf ./node_modules; rm -rf ./dist; rm -rf ./temp"
   },

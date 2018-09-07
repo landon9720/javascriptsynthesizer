@@ -50,17 +50,17 @@ export class SuperFactory {
                 const frequencyProcessAudio = await frequency.initialize()
                 const dutyCycleProcessAudio = await dutyCycle.initialize()
                 let absoluteIndex = 0
-                let dutyStartIndex = 0
+                let periodStartIndex = 0
                 return async () => {
                     const frequencyBuffer = await frequencyProcessAudio()
                     const dutyCycleBuffer = await dutyCycleProcessAudio()
                     const outputBuffer = makeAudioFrame(options)
                     for (let i = 0; i < outputBuffer.length; ++i) {
                         const period = samplesPerSecond / frequencyBuffer[i]
-                        const position = (absoluteIndex - dutyStartIndex) / period
+                        const position = (absoluteIndex - periodStartIndex) / period
                         const sample = position < dutyCycleBuffer[i] ? -1 : 1
                         if (position > 1) {
-                            dutyStartIndex = absoluteIndex
+                            periodStartIndex = absoluteIndex
                         }
                         outputBuffer[i] = sample
                         ++absoluteIndex
@@ -70,49 +70,62 @@ export class SuperFactory {
             })
         }
 
-        // export function saw(f = 440, numberOfFrames) {
-        //     const period = F / f
-        //     let absoluteIndex = 0
-        //     return new AudioProcess(() => {
-        //         return (counter, numberOfFrames) => {
-        //             console.assert(counter < numberOfFrames)
-        //             const outputBuffer = context.createBuffer(1, samplesPerFrame, 44100)
-        //             const output = outputBuffer
-        //             for (let i = 0; i < output.length; ++i) {
-        //                 const b = (counter + absoluteIndex++) % period
-        //                 const c = b / period
-        //                 output[i] = c
-        //             }
-        //             return outputBuffer
-        //         }
-        //     }, numberOfFrames)
-        // }
+        this.saw = (frequency = 440) => {
+            frequency = parameterFunction(options, frequency)
+            return new AudioProcess(options, async () => {
+                const frequencyProcessAudio = await frequency.initialize()
+                let absoluteIndex = 0
+                let periodStartIndex = 0
+                return async () => {
+                    const frequencyBuffer = await frequencyProcessAudio()
+                    const outputBuffer = makeAudioFrame(options)
+                    for (let i = 0; i < outputBuffer.length; ++i) {
+                        const period = samplesPerSecond / frequencyBuffer[i]
+                        const position = (absoluteIndex - periodStartIndex) / period
+                        const sample = position * 2 - 1
+                        if (position > 1) {
+                            periodStartIndex = absoluteIndex
+                        }
+                        outputBuffer[i] = sample
+                        ++absoluteIndex
+                    }
+                    return outputBuffer
+                }
+            })
+        }
 
-        // export function triangle(f = 440, numberOfFrames) {
-        //     const period = F / f
-        //     let absoluteIndex = 0
-        //     return new AudioProcess(() => {
-        //         return (counter, numberOfFrames) => {
-        //             console.assert(counter < numberOfFrames)
-        //             const outputBuffer = context.createBuffer(1, samplesPerFrame, 44100)
-        //             const output = outputBuffer
-        //             for (let i = 0; i < output.length; ++i) {
-        //                 const b = (absoluteIndex++) % period
-        //                 const c = b / period
-        //                 if (c < 0.25) {
-        //                     output[i] = c * 4
-        //                 } else if (c < 0.5) {
-        //                     output[i] = (1 - (c - 0.25) * 4)
-        //                 } else if (c < 0.75) {
-        //                     output[i] = (c - 0.5) * 4 * -1
-        //                 } else {
-        //                     output[i] = (-1 + (c - 0.75) * 4)
-        //                 }
-        //             }
-        //             return outputBuffer
-        //         }
-        //     }, numberOfFrames)
-        // }
+        this.triangle = (frequency = 440) => {
+            frequency = parameterFunction(options, frequency)
+            return new AudioProcess(options, async () => {
+                const frequencyProcessAudio = await frequency.initialize()
+                let absoluteIndex = 0
+                let periodStartIndex = 0
+                return async () => {
+                    const frequencyBuffer = await frequencyProcessAudio()
+                    const outputBuffer = makeAudioFrame(options)
+                    for (let i = 0; i < outputBuffer.length; ++i) {
+                        const period = samplesPerSecond / frequencyBuffer[i]
+                        const position = (absoluteIndex - periodStartIndex) / period
+                        let sample
+                        if (position < 0.25) {
+                            sample = position * 4
+                        } else if (position < 0.5) {
+                            sample = (1 - (position - 0.25) * 4)
+                        } else if (position < 0.75) {
+                            sample = (position - 0.5) * 4 * -1
+                        } else {
+                            sample = (-1 + (position - 0.75) * 4)
+                        }
+                        if (position > 1) {
+                            periodStartIndex = absoluteIndex
+                        }
+                        outputBuffer[i] = sample
+                        ++absoluteIndex
+                    }
+                    return outputBuffer
+                }
+            })
+        }
 
         this.sum = (...inputs) => {
             return new AudioProcess(options, async () => {
@@ -207,7 +220,7 @@ export class SuperFactory {
                             iteratorDone = true
                             return null
                         }
-                        console.assert(value && value.length <= samplesPerFrame * 4, ':-)')
+                        console.assert(value && value.length <= samplesPerFrame * 4, `:-) value.length = ${value.length} expected = ${samplesPerFrame * 4}`)
                         console.assert(value.buffer instanceof ArrayBuffer)
                         if (value.length < samplesPerFrame * 4) {
                             const outputBuffer = makeAudioFrame(options)
@@ -220,23 +233,23 @@ export class SuperFactory {
                 })
             }
             return read(() => {
-                const readable = fs.createReadStream(filename, { autoClose: true, highWatexrMark: samplesPerFrame * 4 })
+                const readable = fs.createReadStream(filename, { autoClose: true, highWaterMark: samplesPerFrame * 4 })
                 readable.on('error', e => {
                     console.error('read stream error', e)
                 })
                 return readable
             })
         }
+
         this.beats = beatNumber => {
             return Math.round(beatNumber * samplesPerBeat)
         }
+
         this.note = (noteNumber = 0, octave = 0) => {
             const beautifulNumber = Math.pow(2, 1 / 12)
             return basisFrequency * Math.pow(beautifulNumber, octave * 12 + noteNumber)
         }
-        this.sequencer = events => {
-            return new Sequencer(() => events)
-        }
+
         this.matrix = fileName => {
             const file = fs.readFileSync(fileName, { encoding: 'utf-8' })
             const lines = file.split(/\n+/).filter(line => line.trim().length > 0)
@@ -248,11 +261,12 @@ export class SuperFactory {
                 throw new Error('invalid header')
             }
             const rows = body.map(
-                line => new Row(line.substring(0, labelWidth), line.substring(labelWidth + 1), charCodeValueInterpreter)
+                line => new Row(line.substring(0, labelWidth), line.substring(labelWidth + 1, labelWidth + 1 + indexWidth), charCodeValueInterpreter)
             )
             const events = rowsToEvents(...rows)
             return new Sequencer(() => events, indexWidth)
         }
+
         this.sequencerToAudioProcess = (sequence, eventToAudioProcess) => {
             if (eventToAudioProcess instanceof AudioProcess) {
                 const _i = eventToAudioProcess
@@ -260,18 +274,15 @@ export class SuperFactory {
             }
             const events = sequence.processSequence()
             let audioProcess = this.mix(
-                ..._.map(events, e => {
-                    let x = eventToAudioProcess(e)
-                    console.log('x', x)
-                    x = x.delay(e.time * options.samplesPerBeat)
-                    return x
-                })
+                ..._.map(events, e => eventToAudioProcess(e).delay(e.time * options.samplesPerBeat))
             )
             if (sequence.duration) {
                 audioProcess = audioProcess.duration(sequence.duration * options.samplesPerBeat)
             }
             return audioProcess
         }
+
+
         this.nullAudioProcess = new AudioProcess(options, () => () => null)
     }
 }

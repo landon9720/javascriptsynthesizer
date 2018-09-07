@@ -252,6 +252,27 @@ export default class AudioProcess {
             `${fopts} ${inputFile} ${fopts} ${outputFile} pitch ${cents} 10`,
         ])
     }
+    lowpass(frequency) {
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
+        return this.spawn((inputFile, outputFile) => [
+            'sox',
+            `${fopts} ${inputFile} ${fopts} ${outputFile} lowpass ${frequency}`,
+        ])
+    }
+    highpass(frequency) {
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
+        return this.spawn((inputFile, outputFile) => [
+            'sox',
+            `${fopts} ${inputFile} ${fopts} ${outputFile} highpass ${frequency}`,
+        ])
+    }
+    reverb(reverberance) {
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
+        return this.spawn((inputFile, outputFile) => [
+            'sox',
+            `${fopts} ${inputFile} ${fopts} ${outputFile} reverb ${Math.round(reverberance * 100)}`,
+        ])
+    }
 }
 
 let nextAudioProcessId = 0
@@ -260,8 +281,9 @@ const a = 5
 const b = -10
 export const sigmoid = x => 1 / (1 + Math.pow(Math.E, a + b * x))
 
-export function audioProcessOptionsFactory(bpm) {
-    const samplesPerFrame = Math.pow(2, 14)
+export function audioProcessOptionsFactory() {
+    const bpm = 140
+    const samplesPerFrame = Math.pow(2, 10)
     const samplesPerSecond = 44100
     const samplesPerBeat = Math.round((samplesPerSecond * 60) / bpm)
     const basisFrequency = 440
@@ -289,7 +311,7 @@ async function runProcess(command, args) {
             if (code === 0) {
                 resolve()
             } else {
-                reject({ code })
+                reject({ command, args, code })
             }
         })
     })
