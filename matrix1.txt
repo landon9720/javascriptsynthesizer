@@ -1,8 +1,15 @@
-         |                |
-sin       049c            
-square        048b        
-saw               048b    
-triangle              048b
-duration |1111111111111111|
+:A          |       |
+sin         |0000000
+sin.octave  |0
+sin.duration|1
 
+:B    |           |
+value |02102432105
+octave|0
 
+:C      |        |
+value   |024 025
+duration|112 112 
+
+:meta|            |
+major|101011010101

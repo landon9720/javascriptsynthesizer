@@ -6,6 +6,7 @@ import AudioProcessReadable from './AudioProcessReadable'
 import { makeAudioFrame } from './context'
 import parameterFunction from './parameterFunction'
 import { SuperFactory } from './SuperFactory'
+import { incr } from './stats'
 
 // AudioProcess encapsulates a function that takes a frame counter and returns a frame of data
 //   js file: export default function eg sin
@@ -30,6 +31,7 @@ export default class AudioProcess {
                     try {
                         if (done) return
                         const frame = await processAudio(frameCounter++)
+                        incr('audio frames processed')
                         if (!frame) {
                             done = true
                         }
@@ -45,7 +47,7 @@ export default class AudioProcess {
         this.id = nextAudioProcessId++
     }
     duration(durationSamples) {
-        console.assert(_.isFinite(durationSamples), 'durationSamples must be a number')
+        console.assert(_.isInteger(durationSamples), 'durationSamples must be a number')
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
             return frameCounter => {
@@ -56,20 +58,20 @@ export default class AudioProcess {
             }
         })
     }
-    then(...inputs) {
+    concat(...inputs) {
         const { ordered } = new SuperFactory(this.options)
         return ordered(...[this, ...inputs])
     }
     loop(times) {
-        console.assert(_.isFinite(times), 'times must be a number')
+        console.assert(_.isInteger(times), 'times must be a number')
         let result = this
         while (--times > 0) {
-            result = result.then(this)
+            result = result.concat(this)
         }
         return result
     }
     offset(offsetSamples) {
-        if (_.isFinite(offsetSamples)) {
+        if (_.isInteger(offsetSamples)) {
             this.options = Object.assign({}, this.options, { offset: offsetSamples })
             return this
         } else {
@@ -113,6 +115,7 @@ export default class AudioProcess {
         })
     }
     delay(sampleCount) {
+        console.assert(_.isInteger(sampleCount), 'delay sampleCount must be a number')
         const { samplesPerFrame } = this.options
         const frameCount = Math.floor(sampleCount / samplesPerFrame)
         const sampleRemainderCount = sampleCount % samplesPerFrame
@@ -126,6 +129,7 @@ export default class AudioProcess {
         return result
     }
     delayFrames(frameCount) {
+        console.assert(_.isInteger(frameCount), 'delayFrames frameCount must be a number')
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
             return frameCounter => {
@@ -138,6 +142,7 @@ export default class AudioProcess {
         })
     }
     delaySamples(sampleCount) {
+        console.assert(_.isInteger(sampleCount), 'delaySamples sampleCount must be a number')
         const { samplesPerFrame } = this.options
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
@@ -282,11 +287,11 @@ const b = -10
 export const sigmoid = x => 1 / (1 + Math.pow(Math.E, a + b * x))
 
 export function audioProcessOptionsFactory() {
-    const bpm = 140
+    const bpm = 125
     const samplesPerFrame = Math.pow(2, 10)
     const samplesPerSecond = 44100
     const samplesPerBeat = Math.round((samplesPerSecond * 60) / bpm)
-    const basisFrequency = 440
+    const basisFrequency = 261.6 // Middle C
     const offset = 0
     const options = {
         samplesPerFrame,

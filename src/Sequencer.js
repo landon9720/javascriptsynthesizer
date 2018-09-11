@@ -3,7 +3,7 @@ import _ from 'lodash'
 export default class Sequencer {
     constructor(processSequence, duration) {
         console.assert(processSequence instanceof Function, 'processSequence must be a function')
-        console.assert(duration && _.isFinite(duration), 'sequencer duration')
+        console.assert(_.isFinite(duration), `sequencer duration ${duration}`)
         this.processSequence = processSequence
         this.duration = duration
     }
@@ -17,12 +17,10 @@ export default class Sequencer {
             return this.processSequence().map(mapEvent)
         }, mappedDuration)
     }
-    mapValues(mapValue) {
-        return this.map(event => {
-            return _.mapValues(event, (value, key) => {
-                if (key === 'time' || key === 'duration') return value
-                else return mapValue(value)
-            })
+    mapValue(mapValueFunction) {
+        return this.map(e => {
+            const [value, octave, invert] = mapValueFunction([e.value, e.octave, e.invert])
+            return _.extend({}, e, { value, octave, invert })
         })
     }
     flatMap(mapEventToSequence) {
@@ -33,9 +31,17 @@ export default class Sequencer {
         })
         return result
     }
+    flatMap2(mapEventToSequence) {
+        let result = NullSequencer
+        this.processSequence().forEach(sequencerEvent => {
+            const s = mapEventToSequence(sequencerEvent).shift(result.duration)
+            result = result.mix(s)
+        })
+        return result
+    }
     shift(delta) {
         if (!delta) return this
-        return this.map(e => _.extend({}, e, { time: e.time + delta }), this.duration + delta)
+        return this.map(e => _.extend({}, e, { time: e.time + delta }), (this.duration || 0) + delta)
     }
     concat(...sequencers) {
         console.assert(_.isArray(sequencers), 'concat requires sequencers array')
@@ -50,11 +56,8 @@ export default class Sequencer {
         events = _.sortBy(events, 'time')
         return new Sequencer(() => events, duration)
     }
-    delay(beats) {
-        return this.map(e => _.extend({}, e, { time: e.time + beats }), (this.duration || 0) + beats)
-    }
     loop(times) {
-        console.assert(times && _.isFinite(times), 'loop times')
+        console.assert(times && _.isInteger(times), 'loop times')
         let result = this
         while (--times) {
             result = result.concat(this)
@@ -63,7 +66,7 @@ export default class Sequencer {
     }
     table() {
         const events = this.processSequence()
-        const keys = Array.from(new Set(_.flatMap(events, e => Object.keys(e))))
+        const keys = ['time', 'channel', 'value', 'octave', 'invert', 'duration']
         console.table(events, keys)
     }
     scale(factor) {
@@ -91,7 +94,7 @@ export function charCodeValueInterpreter(charCode) {
         // numbers
         return charCode - 48
     } else if (charCode >= 97 && charCode <= 122) {
-        // lower-case letters
+        // lower-case letters continue from 10
         return charCode - 87
     } else if (charCode === 32 || !charCode) {
         // space
@@ -101,23 +104,67 @@ export function charCodeValueInterpreter(charCode) {
     }
 }
 
-export function rowsToEvents(...rows) {
+export function charCodeOctaveInterpreter(charCode) {
+    if (charCode >= 48 && charCode <= 57) {
+        // numbers
+        return charCode - 48
+    } else if (charCode >= 97 && charCode <= 122) {
+        // lower-case letters are a negative descending alphabet
+        return -1 * (98 - charCode)
+    } else if (charCode === 32 || !charCode) {
+        // space
+        return null
+    } else {
+        console.assert(true, `invalid charCode ${charCode}`)
+    }
+}
+
+export function rowsToEvents(duration, ...rows) {
+    console.assert(_.isInteger(duration), 'duration must be integer')
+    console.assert(_.isArray(rows), 'rowsToEvents rows must be array')
+    const meta = {
+        octave: 0,
+        invert: 0,
+        duration: 1,
+    }
+    const metaKeys = _.keys(meta)
+    const channels = _(rows).map('key').filter(key => key.indexOf('.') < 0).filter(key => !_.includes(metaKeys, key)).value()
+    const rowByKey = _.keyBy(rows, 'key')
     const events = []
-    const width = rows[0].input.length
+    const width = duration
     for (let i = 0; i < width; ++i) {
-        const event = {
-            time: i,
-        }
-        for (let j = 0; j < rows.length; ++j) {
-            const row = rows[j]
-            const charCode = row.input.charCodeAt(i)
-            const value = row.mapCharCodeToValue(charCode)
-            if (value !== null) {
-                event[row.key] = value
+        for (let j = 0; j < channels.length; ++j) {
+            const key = channels[j]
+            const charCode = rowByKey[key].input.charCodeAt(i)
+            const value = rowByKey[key].mapCharCodeToValue(charCode)
+            if (value !== null && value !== undefined) {
+                const event = {
+                    value,
+                    time: i,
+                    channel: key,
+                }
+                metaKeys.forEach(metaKey => {
+                    const qualifiedKey = `${key}.${metaKey}`
+                    if (rowByKey[qualifiedKey]) {
+                        const charCode = rowByKey[qualifiedKey].input.charCodeAt(i)
+                        const value = rowByKey[qualifiedKey].mapCharCodeToValue(charCode)
+                        if (value !== null) {
+                            event[metaKey] = value
+                        }
+                    } else if (rowByKey[metaKey]) {
+                        const charCode = rowByKey[metaKey].input.charCodeAt(i)
+                        const value = rowByKey[metaKey].mapCharCodeToValue(charCode)
+                        if (value !== null) {
+                            event[metaKey] = value
+                        }
+                    }
+                    if (!_.has(event, metaKey)) {
+                        event[metaKey] = meta[metaKey]
+                    }
+                })
+                events.push(event)
+                _.assign(meta, _.pick(event, metaKeys))
             }
-        }
-        if (_.size(event) > 1) {
-            events.push(event)
         }
     }
     return events

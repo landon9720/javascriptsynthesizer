@@ -2,8 +2,10 @@ import _ from 'lodash'
 import { makeAudioFrame } from './context'
 import AudioProcess from './AudioProcess'
 import parameterFunction from './parameterFunction'
-import Sequencer, { Row, charCodeValueInterpreter, rowsToEvents } from './Sequencer'
+import Sequencer, { Row, charCodeValueInterpreter, charCodeOctaveInterpreter, rowsToEvents } from './Sequencer'
 import fs from 'fs'
+import Parser from './parser'
+import { incr } from './stats'
 
 export class SuperFactory {
     constructor(options) {
@@ -110,11 +112,11 @@ export class SuperFactory {
                         if (position < 0.25) {
                             sample = position * 4
                         } else if (position < 0.5) {
-                            sample = (1 - (position - 0.25) * 4)
+                            sample = 1 - (position - 0.25) * 4
                         } else if (position < 0.75) {
                             sample = (position - 0.5) * 4 * -1
                         } else {
-                            sample = (-1 + (position - 0.75) * 4)
+                            sample = -1 + (position - 0.75) * 4
                         }
                         if (position > 1) {
                             periodStartIndex = absoluteIndex
@@ -211,7 +213,7 @@ export class SuperFactory {
                     const readable = readableFactory()
                     const iterator = readable[Symbol.asyncIterator]()
                     let iteratorDone = false
-                    return async f => {
+                    return async () => {
                         if (iteratorDone) {
                             return null
                         }
@@ -220,12 +222,14 @@ export class SuperFactory {
                             iteratorDone = true
                             return null
                         }
-                        console.assert(value && value.length <= samplesPerFrame * 4, `:-) value.length = ${value.length} expected = ${samplesPerFrame * 4}`)
+                        console.assert(
+                            value && value.length <= samplesPerFrame * 4,
+                            `:-) value.length = ${value.length} expected = ${samplesPerFrame * 4}`
+                        )
                         console.assert(value.buffer instanceof ArrayBuffer)
                         if (value.length < samplesPerFrame * 4) {
                             const outputBuffer = makeAudioFrame(options)
                             outputBuffer.set(new Float32Array(value.buffer))
-                            outputBuffer.fill(0, value.buffer.length / 4)
                             return outputBuffer
                         }
                         return new Float32Array(value.buffer)
@@ -245,26 +249,40 @@ export class SuperFactory {
             return Math.round(beatNumber * samplesPerBeat)
         }
 
-        this.note = (noteNumber = 0, octave = 0) => {
+        this.note = value => {
+            if (_.isInteger(value)) {
+                value = { value, octave: 0, invert: 0 }
+            }
+            let { value: noteNumber, octave, invert } = value
+            console.assert(
+                _.isInteger(noteNumber) && _.isInteger(octave) && _.isInteger(invert),
+                `note bad input: ${value}`
+            )
+            if (invert) {
+                noteNumber *= -1
+                octave *= -1
+            }
             const beautifulNumber = Math.pow(2, 1 / 12)
-            return basisFrequency * Math.pow(beautifulNumber, octave * 12 + noteNumber)
+            const f = basisFrequency * Math.pow(beautifulNumber, (octave * 12 + noteNumber))
+            return f
         }
 
         this.matrix = fileName => {
             const file = fs.readFileSync(fileName, { encoding: 'utf-8' })
-            const lines = file.split(/\n+/).filter(line => line.trim().length > 0)
-            const header = _.head(lines)
-            const body = _.tail(lines)
-            const labelWidth = header.indexOf('|')
-            const indexWidth = header.indexOf('|', labelWidth + 1) - labelWidth - 1
-            if (labelWidth < 0) {
-                throw new Error('invalid header')
-            }
-            const rows = body.map(
-                line => new Row(line.substring(0, labelWidth), line.substring(labelWidth + 1, labelWidth + 1 + indexWidth), charCodeValueInterpreter)
-            )
-            const events = rowsToEvents(...rows)
-            return new Sequencer(() => events, indexWidth)
+            const matrixes = Parser.Root.tryParse(file)
+            return _.mapValues(matrixes, matrix => {
+                const rows = matrix.datarows.map(line => {
+                    const key = line.key
+                    const input = line.data
+                    let interpreter = charCodeValueInterpreter
+                    if (key === 'octave') {
+                        interpreter = charCodeOctaveInterpreter
+                    }
+                    return new Row(key, input, interpreter)
+                })
+                const events = rowsToEvents(matrix.duration, ...rows)
+                return new Sequencer(() => events, matrix.duration)
+            })
         }
 
         this.sequencerToAudioProcess = (sequence, eventToAudioProcess) => {
@@ -274,14 +292,13 @@ export class SuperFactory {
             }
             const events = sequence.processSequence()
             let audioProcess = this.mix(
-                ..._.map(events, e => eventToAudioProcess(e).delay(e.time * options.samplesPerBeat))
+                ..._.map(events, e => eventToAudioProcess(e).delay(Math.round(e.time * options.samplesPerBeat)))
             )
             if (sequence.duration) {
                 audioProcess = audioProcess.duration(sequence.duration * options.samplesPerBeat)
             }
             return audioProcess
         }
-
 
         this.nullAudioProcess = new AudioProcess(options, () => () => null)
     }
