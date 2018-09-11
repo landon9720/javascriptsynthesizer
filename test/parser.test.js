@@ -7,10 +7,10 @@ test('defined', () => {
 test('Root', () => {
     const text = `
 
-:A      |          |
+A       |          |
 labe.l  |datavalues
 
-:B      |          |
+B       |          |
 labe.l  |datavalues
 
 `

@@ -8,6 +8,7 @@ export default class Sequencer {
         this.duration = duration
     }
     mix(sequencer) {
+        console.assert(sequencer instanceof Sequencer, 'mix sequencer must be a sequencer')
         return new Sequencer(() => {
             return _.sortBy([...this.processSequence(), ...sequencer.processSequence()], 'time')
         }, Math.max(this.duration || 0, sequencer.duration || 0))
@@ -27,6 +28,7 @@ export default class Sequencer {
         let result = NullSequencer
         this.processSequence().forEach(sequencerEvent => {
             const s = mapEventToSequence(sequencerEvent).shift(sequencerEvent.time)
+            console.assert(s instanceof Sequencer, 'flatMap mapEventToSequence must return a sequencer')
             result = result.mix(s)
         })
         return result
@@ -35,6 +37,7 @@ export default class Sequencer {
         let result = NullSequencer
         this.processSequence().forEach(sequencerEvent => {
             const s = mapEventToSequence(sequencerEvent).shift(result.duration)
+            console.assert(s instanceof Sequencer, 'flatMap2 mapEventToSequence must return a sequencer')
             result = result.mix(s)
         })
         return result
@@ -50,6 +53,7 @@ export default class Sequencer {
         let duration = 0
         _.forEach(sequencers, sequencer => {
             sequencer = sequencer.shift(duration)
+            console.assert(sequencer instanceof Sequencer, 'concat sequencers must be array of sequencers')
             events.push(...sequencer.processSequence())
             duration = sequencer.duration
         })
@@ -78,6 +82,38 @@ export default class Sequencer {
             }
             return Object.assign({}, e, e1)
         }, (this.duration || 0) * factor)
+    }
+    transpose(scale, channel = 'value') {
+        console.assert(scale instanceof Sequencer, 'transpose scale must be sequence')
+        console.assert(channel && _.isString(channel), 'sequenceToScale channel must be string')
+        const sequencerEvents = scale.processSequence()
+        const indexedEvents = _.groupBy(sequencerEvents, 'time')
+        let maskLength = 0
+        while (_.some(indexedEvents[maskLength++], e => e.channel === channel && (e.value === 0 || e.value === 1))) {}
+        console.assert(maskLength-- > 0, 'maskLength must be > 0')
+        const mask = _.range(0, maskLength).map(t => [
+            t,
+            _.some(indexedEvents[t], e => e.channel === channel && e.value === 1),
+        ])
+        scale = _(mask)
+            .filter(([t, v]) => v)
+            .map(([t, v]) => t)
+            .value()
+        console.assert(!_.isEmpty(scale), 'sequenceToScale scale is empty')
+        return this.map(e => {
+            let rank = e.value
+            let octave = e.octave
+            while (rank < 0) {
+                rank += scale.length
+                octave -= 1
+            }
+            while (rank >= scale.length) {
+                rank -= scale.length
+                octave += 1
+            }
+            const value = scale[rank]
+            return Object.assign({}, e, { value, octave })
+        })
     }
 }
 
@@ -128,7 +164,11 @@ export function rowsToEvents(duration, ...rows) {
         duration: 1,
     }
     const metaKeys = _.keys(meta)
-    const channels = _(rows).map('key').filter(key => key.indexOf('.') < 0).filter(key => !_.includes(metaKeys, key)).value()
+    const channels = _(rows)
+        .map('key')
+        .filter(key => key.indexOf('.') < 0)
+        .filter(key => !_.includes(metaKeys, key))
+        .value()
     const rowByKey = _.keyBy(rows, 'key')
     const events = []
     const width = duration

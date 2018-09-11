@@ -15,7 +15,6 @@ export default P.createLanguage({
     },
     Header: () => {
         return P.seqObj(
-            P.string(':'),
             ['id', P.regex(/\w+ */)],
             P.string('|'),
             ['duration', P.regex(/ */)],
