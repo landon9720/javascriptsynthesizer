@@ -11,5 +11,5 @@ C       |        |
 value   |024 025
 duration|112 112 
 
-:meta|            |
+meta |            |
 major|101011010101

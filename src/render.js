@@ -1,4 +1,4 @@
-import { SuperFactory } from './SuperFactory'
+import { SuperFactory } from './superFactory'
 import AudioProcess, { audioProcessOptionsFactory } from './AudioProcess'
 import fs from 'fs'
 

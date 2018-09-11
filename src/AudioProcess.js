@@ -5,7 +5,7 @@ import _ from 'lodash'
 import AudioProcessReadable from './AudioProcessReadable'
 import { makeAudioFrame } from './context'
 import parameterFunction from './parameterFunction'
-import { SuperFactory } from './SuperFactory'
+import { SuperFactory } from './superFactory'
 import { incr } from './stats'
 
 // AudioProcess encapsulates a function that takes a frame counter and returns a frame of data
