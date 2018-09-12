@@ -1,4 +1,22 @@
-let { A: aPart, B: bPart, C: cPart, meta } = matrix('matrix1.txt')
+let { A: aPart, B: bPart, C: cPart, meta } = matrix(`
+
+A           |       |
+sin         |0000000
+sin.octave  |0
+sin.duration|1
+
+B     |           |
+value |02102432105
+octave|0
+
+C       |        |
+value   |024 025
+duration|112 112 
+
+meta |            |
+major|101011010101
+
+`)
 
 cPart = cPart.scale(1 / 4)
 

@@ -267,9 +267,8 @@ export class SuperFactory {
             return f
         }
 
-        this.matrix = fileName => {
-            const file = fs.readFileSync(fileName, { encoding: 'utf-8' })
-            const matrixes = Parser.Root.tryParse(file)
+        this.matrix = textInput => {
+            const matrixes = Parser.Root.tryParse(textInput)
             return _.mapValues(matrixes, matrix => {
                 const rows = matrix.datarows.map(line => {
                     const key = line.key
