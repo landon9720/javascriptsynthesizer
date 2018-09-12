@@ -9,7 +9,8 @@
             "request": "attach",
             "name": "Attach",
             "port": 9229,
-            "outFiles": [ "${workspaceFolder}/src/*.js" ]
+            "outFiles": [ "${workspaceFolder}/dist/*.js" ],
+            "sourceMaps": true
         },
     ]
 }

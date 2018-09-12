@@ -256,7 +256,7 @@ export class SuperFactory {
             let { value: noteNumber, octave, invert } = value
             console.assert(
                 _.isInteger(noteNumber) && _.isInteger(octave) && _.isInteger(invert),
-                `note bad input: ${value}`
+                `note bad input: ${JSON.stringify(value)}`
             )
             if (invert) {
                 noteNumber *= -1
@@ -279,8 +279,8 @@ export class SuperFactory {
                     }
                     return new Row(key, input, interpreter)
                 })
-                const events = rowsToEvents(matrix.duration, ...rows)
-                return new Sequencer(() => events, matrix.duration)
+                const sequencers = rowsToEvents(matrix.duration, ...rows)
+                return sequencers
             })
         }
 
@@ -356,18 +356,17 @@ export function rowsToEvents(duration, ...rows) {
         .filter(key => !_.includes(metaKeys, key))
         .value()
     const rowByKey = _.keyBy(rows, 'key')
-    const events = []
-    const width = duration
-    for (let i = 0; i < width; ++i) {
-        for (let j = 0; j < channels.length; ++j) {
-            const key = channels[j]
+    const sequencers = _(channels).map(channel => {
+        const events = []
+        const width = duration
+        for (let i = 0; i < width; ++i) {
+            const key = channel
             const charCode = rowByKey[key].input.charCodeAt(i)
             const value = rowByKey[key].mapCharCodeToValue(charCode)
             if (value !== null && value !== undefined) {
                 const event = {
                     value,
                     time: i,
-                    channel: key,
                 }
                 metaKeys.forEach(metaKey => {
                     const qualifiedKey = `${key}.${metaKey}`
@@ -392,6 +391,7 @@ export function rowsToEvents(duration, ...rows) {
                 _.assign(meta, _.pick(event, metaKeys))
             }
         }
-    }
-    return events
+        return [channel, new Sequencer(() => events, duration)]
+    }).fromPairs().value()
+    return sequencers
 }
