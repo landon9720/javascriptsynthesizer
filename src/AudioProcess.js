@@ -27,6 +27,7 @@ export default class AudioProcess {
             let done = false
             try {
                 const processAudio = await initialize()
+                console.assert(_.isFunction(processAudio), `processAudio is not a function: ${processAudio}`)
                 return async () => {
                     try {
                         if (done) return

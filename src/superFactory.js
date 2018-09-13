@@ -129,6 +129,19 @@ export class SuperFactory {
             })
         }
 
+        this.whitenoise = () => {
+            return new AudioProcess(options, () => {
+                return () => {
+                    const outputBuffer = makeAudioFrame(options)
+                    for (let i = 0; i < outputBuffer.length; ++i) {
+                        const sample = Math.random() * 2 - 1
+                        outputBuffer[i] = sample
+                    }
+                    return outputBuffer
+                }
+            })
+        }
+
         this.sum = (...inputs) => {
             return new AudioProcess(options, async () => {
                 const processAudios = await Promise.all(_.map(inputs, i => i.initialize()))
@@ -263,7 +276,7 @@ export class SuperFactory {
                 octave *= -1
             }
             const beautifulNumber = Math.pow(2, 1 / 12)
-            const f = basisFrequency * Math.pow(beautifulNumber, (octave * 12 + noteNumber))
+            const f = basisFrequency * Math.pow(beautifulNumber, octave * 12 + noteNumber)
             return f
         }
 
@@ -356,42 +369,45 @@ export function rowsToEvents(duration, ...rows) {
         .filter(key => !_.includes(metaKeys, key))
         .value()
     const rowByKey = _.keyBy(rows, 'key')
-    const sequencers = _(channels).map(channel => {
-        const events = []
-        const width = duration
-        for (let i = 0; i < width; ++i) {
-            const key = channel
-            const charCode = rowByKey[key].input.charCodeAt(i)
-            const value = rowByKey[key].mapCharCodeToValue(charCode)
-            if (value !== null && value !== undefined) {
-                const event = {
-                    value,
-                    time: i,
+    const sequencers = _(channels)
+        .map(channel => {
+            const events = []
+            const width = duration
+            for (let i = 0; i < width; ++i) {
+                const key = channel
+                const charCode = rowByKey[key].input.charCodeAt(i)
+                const value = rowByKey[key].mapCharCodeToValue(charCode)
+                if (value !== null && value !== undefined) {
+                    const event = {
+                        value,
+                        time: i,
+                    }
+                    metaKeys.forEach(metaKey => {
+                        const qualifiedKey = `${key}.${metaKey}`
+                        if (rowByKey[qualifiedKey]) {
+                            const charCode = rowByKey[qualifiedKey].input.charCodeAt(i)
+                            const value = rowByKey[qualifiedKey].mapCharCodeToValue(charCode)
+                            if (value !== null) {
+                                event[metaKey] = value
+                            }
+                        } else if (rowByKey[metaKey]) {
+                            const charCode = rowByKey[metaKey].input.charCodeAt(i)
+                            const value = rowByKey[metaKey].mapCharCodeToValue(charCode)
+                            if (value !== null) {
+                                event[metaKey] = value
+                            }
+                        }
+                        if (!_.has(event, metaKey)) {
+                            event[metaKey] = meta[metaKey]
+                        }
+                    })
+                    events.push(event)
+                    _.assign(meta, _.pick(event, metaKeys))
                 }
-                metaKeys.forEach(metaKey => {
-                    const qualifiedKey = `${key}.${metaKey}`
-                    if (rowByKey[qualifiedKey]) {
-                        const charCode = rowByKey[qualifiedKey].input.charCodeAt(i)
-                        const value = rowByKey[qualifiedKey].mapCharCodeToValue(charCode)
-                        if (value !== null) {
-                            event[metaKey] = value
-                        }
-                    } else if (rowByKey[metaKey]) {
-                        const charCode = rowByKey[metaKey].input.charCodeAt(i)
-                        const value = rowByKey[metaKey].mapCharCodeToValue(charCode)
-                        if (value !== null) {
-                            event[metaKey] = value
-                        }
-                    }
-                    if (!_.has(event, metaKey)) {
-                        event[metaKey] = meta[metaKey]
-                    }
-                })
-                events.push(event)
-                _.assign(meta, _.pick(event, metaKeys))
             }
-        }
-        return [channel, new Sequencer(() => events, duration)]
-    }).fromPairs().value()
+            return [channel, new Sequencer(() => events, duration)]
+        })
+        .fromPairs()
+        .value()
     return sequencers
 }

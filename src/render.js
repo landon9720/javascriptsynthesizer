@@ -11,6 +11,7 @@ import fs from 'fs'
             square,
             saw,
             triangle,
+            whitenoise,
             sum,
             mix,
             ordered,
@@ -22,7 +23,9 @@ import fs from 'fs'
             sequencerToAudioProcess,
             nullAudioProcess,
         } = new SuperFactory(options)
-        const js = fs.readFileSync('user.js', { encoding: 'utf-8' })
+        const arg = process.argv[2]
+        console.assert(_.isString(arg) && arg.length > 0, 'filename argument required')
+        const js = fs.readFileSync(arg, { encoding: 'utf-8' })
         const f = new Function(
             'console',
             'samplesPerFrame',
@@ -33,6 +36,7 @@ import fs from 'fs'
             'square',
             'saw',
             'triangle',
+            'whitenoise',
             'sum',
             'mix',
             'ordered',
@@ -55,6 +59,7 @@ import fs from 'fs'
             square,
             saw,
             triangle,
+            whitenoise,
             sum,
             mix,
             ordered,
@@ -67,7 +72,7 @@ import fs from 'fs'
             nullAudioProcess,
         )
         if (!tune || !tune instanceof AudioProcess) throw new Error('user script must return AudioProcess')
-        await tune.writeFile('tune.raw')
+        await tune.writeFile(`${arg}.raw`)
         process.exit(0)
     } catch (e) {
         console.error('exception', e)
