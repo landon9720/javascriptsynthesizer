@@ -1,4 +1,9 @@
-let { A: { sin: aPart }, B: { value: bPart }, C: { value: cPart }, meta: { major: meta } } = matrix(`
+let {
+    A: { sin: aPart },
+    B: { value: bPart },
+    C: { value: cPart },
+    meta: { major: meta },
+} = matrix(`
 
 A           |       |
 sin         |0000000
@@ -27,34 +32,17 @@ sequence = sequence.flatMap2(({ value, octave, invert, channel }) =>
     cPart.mapValue(([v, o, i]) => [value + v, octave + o, invert]).map(e => _.extend({}, e, { channel }))
 )
 sequence = sequence.transpose(meta)
+sequence.table('sequence')
 
-function sinx({ value, octave, invert, duration: d }) {
-    return sin(note({ value, octave, invert }))
+const melody = sequencerToAudioProcess(sequence, ({ value, octave, invert, duration: d }) =>
+    sin(note({ value, octave, invert }))
         .adsr({ duration: beats(d) })
         .gain(0.8)
-}
+)
 
-function square({ value, octave, invert, duration: d }) {
-    return square(note({ value, octave, invert }))
-        .adsr({ duration: beats(d) })
-        .gain(0.5)
-}
+const hits = nullAudioProcess
 
-function saw({ value, octave, invert, duration: d }) {
-    return saw(note({ value, octave, invert }))
-        .adsr({ A: beats(1), R: beats(2), duration: beats(d) })
-        .gain(0.5)
-}
-
-function triangle({ value, octave, invert, duration: d }) {
-    return triangle(note({ value, octave, invert }))
-        .adsr({ A: beats(1), R: beats(2), duration: beats(d) })
-        .offset(beats(1 / 8))
-        .gain(0.9)
-}
-
-sequence.table('sequence')
-let tune = sequencerToAudioProcess(sequence, sinx)
+let tune = sum(melody, hits)
 tune = tune.gain(0.5)
 tune = tune.reverb(0.27)
 return tune
