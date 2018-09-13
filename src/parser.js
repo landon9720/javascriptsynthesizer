@@ -33,6 +33,7 @@ export default P.createLanguage({
             P.optWhitespace,
             P.string('|'),
             ['data', P.regex(/[\w ]+/)],
+            P.string('|').times(0, 1),
             P.newline,
         )
     },
