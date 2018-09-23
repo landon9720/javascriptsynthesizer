@@ -1,17 +1,15 @@
 import AudioProcess from './AudioProcess'
 import _ from 'lodash'
-import { makeAudioFrame } from './context'
+import { makeAudioFrame, samplesPerFrame } from './buffer'
 
 // A AudioProcess parameter is an AudioProcess
 export default function parameterFunction(audioProcessOptions, parameter) {
-    const { samplesPerFrame } = audioProcessOptions
-    console.assert(samplesPerFrame)
     if (parameter instanceof AudioProcess) {
         return parameter
     } else if (_.isFunction(parameter)) {
         return new AudioProcess(audioProcessOptions, () => {
             return frameCounter => {
-                const outputBuffer = makeAudioFrame(audioProcessOptions)
+                const outputBuffer = makeAudioFrame()
                 for (let i = 0; i < samplesPerFrame; ++i) {
                     const sampleIndex = frameCounter * samplesPerFrame + i
                     outputBuffer[i] = parameter(sampleIndex)
@@ -22,7 +20,7 @@ export default function parameterFunction(audioProcessOptions, parameter) {
     } else if (_.isNumber(parameter)) {
         return new AudioProcess(audioProcessOptions, () => {
             return () => {
-                const outputBuffer = makeAudioFrame(audioProcessOptions)
+                const outputBuffer = makeAudioFrame()
                 for (let i = 0; i < samplesPerFrame; ++i) {
                     outputBuffer[i] = parameter
                 }

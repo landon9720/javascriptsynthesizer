@@ -1,30 +1,16 @@
 const path = require('path')
-const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
+    mode: 'development',
     entry: ['./src/index.js', 'babel-polyfill'],
     output: {
         filename: './index.js',
         path: path.resolve(__dirname, 'dist'),
     },
-    plugins: [
-    ],
-    resolve: {
-        extensions: ['.js', '.json'],
-    },
-    module: {
-        loaders: [
-            {
-                test: /\.(js|jsx)$/,
-                exclude: /(node_modules)/,
-                loader: 'babel-loader',
-            },
-        ],
-    },
+    target: 'node',
     node: {
         fs: 'empty',
     },
     devtool: 'source-map',
-    target: 'node',
     stats: 'minimal',
 }

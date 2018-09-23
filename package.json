@@ -6,7 +6,6 @@
   "scripts": {
     "build": "webpack",
     "test": "jest",
-    "render": "node dist/index.js",
     "debug": "node --inspect-brk dist/index.js",
     "play": "play -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw",
     "view": "sox -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw -n spectrogram -X 80 -Y 700 -h -r",
@@ -17,16 +16,28 @@
   "license": "UNLICENSED",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.11",
     "parsimmon": "^1.12.0",
-    "source-map-support": "^0.5.9"
+    "pretty-bytes": "^5.1.0",
+    "pretty-ms": "^4.0.0",
+    "source-map-support": "^0.5.9",
+    "stream-chunker": "^1.2.8"
   },
   "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
     "babel-core": "^6.26.0",
-    "babel-loader": "^7.1.2",
+    "babel-loader": "^8.0.2",
     "babel-preset-env": "^1.6.0",
     "copy-webpack-plugin": "^4.1.1",
-    "jest": "^23.5.0",
-    "webpack": "^3.6.0"
+    "eslint": "^5.6.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^7.0.1",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "jest": "^23.6.0",
+    "webpack": "^4.19.0",
+    "webpack-cli": "^3.1.0"
   }
 }

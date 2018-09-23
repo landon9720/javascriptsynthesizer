@@ -73,7 +73,7 @@ export default class Sequencer {
             console.log(`sequencer ${name}`)
         }
         const events = this.processSequence()
-        const keys = ['time', 'value', 'octave', 'invert', 'duration']
+        const keys = ['time', 'channel', 'value', 'octave', 'invert', 'duration']
         console.table(events, keys)
     }
     scale(factor) {
@@ -86,16 +86,17 @@ export default class Sequencer {
             return Object.assign({}, e, e1)
         }, (this.duration || 0) * factor)
     }
-    transpose(scale) {
-        console.assert(scale instanceof Sequencer, 'transpose scale must be sequence')
+    transpose(scale, channel = 'value') {
+        console.assert(scale instanceof Sequencer, 'transpose scale must be sequencer')
+        console.assert(channel && _.isString(channel), 'sequenceToScale channel must be string')
         const sequencerEvents = scale.processSequence()
         const indexedEvents = _.groupBy(sequencerEvents, 'time')
         let maskLength = 0
-        while (_.some(indexedEvents[maskLength++], e => (e.value === 0 || e.value === 1))) {}
+        while (_.some(indexedEvents[maskLength++], e => e.channel === channel && (e.value === 0 || e.value === 1))) {}
         console.assert(maskLength-- > 0, 'maskLength must be > 0')
         const mask = _.range(0, maskLength).map(t => [
             t,
-            _.some(indexedEvents[t], e => e.value === 1),
+            _.some(indexedEvents[t], e => e.channel === channel && e.value === 1),
         ])
         scale = _(mask)
             .filter(([t, v]) => v)
@@ -116,6 +117,12 @@ export default class Sequencer {
             const value = scale[rank]
             return Object.assign({}, e, { value, octave })
         })
+    }
+    filter(eventPredicate) {
+        return new Sequencer(() => this.processSequence().filter(eventPredicate), this.duration)
+    }
+    channel(...channels) {
+        return this.filter(e => _.find(channels, c => e.channel === c))
     }
 }
 
