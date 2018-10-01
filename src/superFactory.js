@@ -4,7 +4,7 @@ import AudioProcess from './AudioProcess'
 import parameterFunction from './parameterFunction'
 import Sequencer from './Sequencer'
 import fs from 'fs'
-import Parser from './parser'
+import parser from './parser'
 import { incr } from './stats'
 import chunker from 'stream-chunker'
 import { Readable } from 'stream'
@@ -12,10 +12,10 @@ import { samplesPerFrame } from './buffer'
 
 export class SuperFactory {
     constructor(options) {
-        const { samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = options
-        console.assert(samplesPerBeat)
-        console.assert(samplesPerSecond)
-        console.assert(basisFrequency)
+        const { samplesPerSecond, basisFrequency = 440 } = options
+        let samplesPerBeat
+        console.assert(samplesPerSecond, 'SuperFactory samplesPerSecond')
+        console.assert(basisFrequency, 'SuperFactory basisFrequency ')
 
         this.sin = (frequency = 440) => {
             frequency = parameterFunction(options, frequency)
@@ -146,9 +146,9 @@ export class SuperFactory {
 
         this.sum = (...inputs) => {
             return new AudioProcess(options, async () => {
-                const processAudios = await Promise.all(_.map(inputs, i => i.initialize()))
+                const processAudios = await Promise.map(inputs, i => i.initialize(), { concurrency: 10 })
                 return async () => {
-                    let inputBuffers = await Promise.all(_.map(processAudios, processAudio => processAudio()))
+                    let inputBuffers = await Promise.map(processAudios, processAudio => processAudio(), { concurrency: 10 })
                     inputBuffers = inputBuffers.filter(inputBuffer => inputBuffer && inputBuffer !== emptyAudioFrame)
                     if (_.isEmpty(inputBuffers)) return
                     const outputBuffer = makeAudioFrame(options)
@@ -171,9 +171,9 @@ export class SuperFactory {
                 const audioProcesses = _.map(inputs, ap => {
                     return ap.delay(maxOffset - ap.offset())
                 })
-                const processAudios = await Promise.all(_.map(audioProcesses, ap => ap.initialize()))
+                const processAudios = await Promise.map(audioProcesses, ap => ap.initialize(), { concurrency: 10 })
                 return async () => {
-                    let inputBuffers = await Promise.all(_.map(processAudios, processAudio => processAudio()))
+                    let inputBuffers = await Promise.map(processAudios, processAudio => processAudio(), { concurrency: 10 })
                     inputBuffers = inputBuffers.filter(inputBuffer => inputBuffer && inputBuffer !== emptyAudioFrame)
                     if (_.isEmpty(inputBuffers)) return
                     const outputBuffer = makeAudioFrame(options)
@@ -190,7 +190,7 @@ export class SuperFactory {
         // outputs the input audio processes one at a time, in order
         this.ordered = (...inputs) => {
             return new AudioProcess(options, async () => {
-                const processAudios = await Promise.all(_.map(inputs, i => i.initialize()))
+                const processAudios = await Promise.map(inputs, i => i.initialize(), { concurrency: 10 })
                 return async () => {
                     let buffer
                     while (!buffer) {
@@ -243,7 +243,9 @@ export class SuperFactory {
                             done = true
                             return null
                         }
-                        buffer = new Float32Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength))
+                        buffer = new Float32Array(
+                            value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)
+                        )
                         console.assert(buffer.length % samplesPerFrame === 0, 'buffer length multiple of frame length')
                         incr('read frames', buffer.length / samplesPerFrame)
                         const b = buffer.slice(0, samplesPerFrame)
@@ -261,6 +263,11 @@ export class SuperFactory {
                 })
                 return new Readable().wrap(readable)
             })
+        }
+
+        this.bpm = beatsPerMinute => {
+            const _samplesPerBeat = Math.round((samplesPerSecond * 60) / beatsPerMinute)
+            options.samplesPerBeat = samplesPerBeat = _samplesPerBeat
         }
 
         this.beats = beatNumber => {
@@ -285,22 +292,7 @@ export class SuperFactory {
             return f
         }
 
-        this.matrix = textInput => {
-            const matrixes = Parser.Root.tryParse(textInput)
-            return _.mapValues(matrixes, matrix => {
-                const rows = matrix.datarows.map(line => {
-                    const key = line.key
-                    const input = line.data
-                    let interpreter = charCodeValueInterpreter
-                    if (key === 'octave') {
-                        interpreter = charCodeOctaveInterpreter
-                    }
-                    return new Row(key, input, interpreter)
-                })
-                const events = rowsToEvents(matrix.duration, ...rows)
-                return new Sequencer(() => events, matrix.duration)
-            })
-        }
+        this.matrix = textInput => parser(textInput)
 
         this.sequencerToAudioProcess = (sequence, eventToAudioProcess) => {
             console.assert(sequence instanceof Sequencer, 'sequence instanceof Sequencer')
@@ -321,97 +313,4 @@ export class SuperFactory {
 
         this.nullAudioProcess = new AudioProcess(options, () => () => null)
     }
-}
-
-export class Row {
-    constructor(key, input, mapCharCodeToValue) {
-        this.key = key.trim()
-        this.input = input
-        this.mapCharCodeToValue = mapCharCodeToValue
-    }
-}
-
-export function charCodeValueInterpreter(charCode) {
-    if (charCode >= 48 && charCode <= 57) {
-        // numbers
-        return charCode - 48
-    } else if (charCode >= 97 && charCode <= 122) {
-        // lower-case letters continue from 10
-        return charCode - 87
-    } else if (charCode === 32 || !charCode) {
-        // space
-        return null
-    } else {
-        console.assert(true, `invalid charCode ${charCode}`)
-    }
-}
-
-export function charCodeOctaveInterpreter(charCode) {
-    if (charCode >= 48 && charCode <= 57) {
-        // numbers
-        return charCode - 48
-    } else if (charCode >= 97 && charCode <= 122) {
-        // lower-case letters are a negative descending alphabet
-        return -1 * (98 - charCode)
-    } else if (charCode === 32 || !charCode) {
-        // space
-        return null
-    } else {
-        console.assert(true, `invalid charCode ${charCode}`)
-    }
-}
-
-export function rowsToEvents(duration, ...rows) {
-    console.assert(_.isInteger(duration), 'duration must be integer')
-    console.assert(_.isArray(rows), 'rowsToEvents rows must be array')
-    const meta = {
-        octave: 0,
-        invert: 0,
-        duration: 1,
-    }
-    const metaKeys = _.keys(meta)
-    const channels = _(rows)
-        .map('key')
-        .filter(key => key.indexOf('.') < 0)
-        .filter(key => !_.includes(metaKeys, key))
-        .value()
-    const rowByKey = _.keyBy(rows, 'key')
-    const events = []
-    const width = duration
-    for (let i = 0; i < width; ++i) {
-        for (let j = 0; j < channels.length; ++j) {
-            const key = channels[j]
-            const charCode = rowByKey[key].input.charCodeAt(i)
-            const value = rowByKey[key].mapCharCodeToValue(charCode)
-            if (value !== null && value !== undefined) {
-                const event = {
-                    value,
-                    time: i,
-                    channel: key,
-                }
-                metaKeys.forEach(metaKey => {
-                    const qualifiedKey = `${key}.${metaKey}`
-                    if (rowByKey[qualifiedKey]) {
-                        const charCode = rowByKey[qualifiedKey].input.charCodeAt(i)
-                        const value = rowByKey[qualifiedKey].mapCharCodeToValue(charCode)
-                        if (value !== null) {
-                            event[metaKey] = value
-                        }
-                    } else if (rowByKey[metaKey]) {
-                        const charCode = rowByKey[metaKey].input.charCodeAt(i)
-                        const value = rowByKey[metaKey].mapCharCodeToValue(charCode)
-                        if (value !== null) {
-                            event[metaKey] = value
-                        }
-                    }
-                    if (!_.has(event, metaKey)) {
-                        event[metaKey] = meta[metaKey]
-                    }
-                })
-                events.push(event)
-                _.assign(meta, _.pick(event, metaKeys))
-            }
-        }
-    }
-    return events
 }

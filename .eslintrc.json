@@ -23,6 +23,9 @@
         "semi": [
             "error",
             "never"
+        ],
+        "no-console": [
+            "disabled"
         ]
     }
 }

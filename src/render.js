@@ -5,14 +5,12 @@ import fs from 'fs'
 import { samplesPerFrame } from './buffer'
 import prettyMs from 'pretty-ms'
 
-const bpm = 80
 const samplesPerSecond = 44100
-const samplesPerBeat = Math.round((samplesPerSecond * 60) / bpm)
 const basisFrequency = 261.6 // Middle C
 const offset = 0
 const options = {
     samplesPerSecond,
-    samplesPerBeat,
+    samplesPerBeat: null, // set below by bpm call
     basisFrequency,
     offset,
 }
@@ -28,12 +26,15 @@ const {
     ordered,
     value,
     readFile,
+    bpm,
     beats,
     note,
     matrix,
     sequencerToAudioProcess,
     nullAudioProcess,
 } = new SuperFactory(options)
+
+bpm(100) // default beats per minute
 
 const channelInstrumentMap = {}
 function addInstrument(channelName, instrumentNameOrFunction) {
@@ -78,6 +79,7 @@ function invokeUserScript(userScript) {
         'ordered',
         'value',
         'readFile',
+        'bpm',
         'beats',
         'note',
         'matrix',
@@ -89,7 +91,7 @@ function invokeUserScript(userScript) {
     return f(
         console,
         samplesPerFrame,
-        samplesPerBeat,
+        options.samplesPerBeat,
         samplesPerSecond,
         basisFrequency,
         sin,
@@ -102,12 +104,13 @@ function invokeUserScript(userScript) {
         ordered,
         value,
         readFile,
+        bpm,
         beats,
         note,
         matrix,
         sequencerToAudioProcess,
         nullAudioProcess,
-        addInstrument
+        addInstrument,
     )
 }
 

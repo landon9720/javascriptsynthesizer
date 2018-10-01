@@ -4,4 +4,4 @@ DIR="${0%/*}"
 node --no-warnings "$DIR/dist/index.js" $1
 
 
-#--inspect-brk 
+# --inspect-brk

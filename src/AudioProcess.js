@@ -17,10 +17,9 @@ export default class AudioProcess {
     constructor(options, initialize) {
         console.assert(_.isObject(options), 'options must be an object')
         console.assert(_.isFunction(initialize), 'initialize must be a function')
-        const { samplesPerBeat, samplesPerSecond, basisFrequency = 440 } = (this.options = options)
-        console.assert(samplesPerBeat)
-        console.assert(samplesPerSecond)
-        console.assert(basisFrequency)
+        const { samplesPerSecond, basisFrequency = 440 } = (this.options = options)
+        console.assert(samplesPerSecond, 'AudioProcess samplesPerSecond')
+        console.assert(basisFrequency, 'AudioProcess basisFrequency')
         this.initialize = async () => {
             let frameCounter = 0
             let done = false
@@ -152,18 +151,14 @@ export default class AudioProcess {
                 let outputBuffer
                 if (inputBuffer) {
                     outputBuffer = outputBuffer || makeAudioFrame()
-                    for (let i = 0; i < sampleCount; ++i) {
-                        outputBuffer[i] = inputBuffer[i + samplesPerFrame - sampleCount]
-                    }
+                    outputBuffer.set(inputBuffer.slice(samplesPerFrame - sampleCount), 0)
                 }
                 inputBuffer = null
                 if (done) return outputBuffer
                 inputBuffer = await processAudio()
                 if (inputBuffer) {
                     outputBuffer = outputBuffer || makeAudioFrame()
-                    for (let i = 0; i < samplesPerFrame - sampleCount; ++i) {
-                        outputBuffer[i + sampleCount] = inputBuffer[i]
-                    }
+                    outputBuffer.set(inputBuffer.slice(0, samplesPerFrame - sampleCount), sampleCount)
                 } else {
                     done = true
                 }
@@ -184,7 +179,7 @@ export default class AudioProcess {
     } = {}) {
         console.assert(A && R)
         S = S || (duration || this.options.samplesPerSecond) - A - D - R
-        console.assert(S >= 0, 'S >= 0')
+        console.assert(S >= 0, `S ${S} < 0`)
         const factor = sampleNumber => {
             if (sampleNumber < A) {
                 return 1 * attackFunction(sampleNumber / A)
