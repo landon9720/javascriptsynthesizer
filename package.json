@@ -16,6 +16,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "args": "^5.0.0",
+    "babel-eslint": "^10.0.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.2",
     "lodash": "^4.17.11",

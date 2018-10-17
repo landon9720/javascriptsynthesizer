@@ -1,3 +1,5 @@
+// # zigzag demonstration
+
 // ## Sin
 // This is the simplest useful script.
 sin(440).duration(samplesPerSecond)
