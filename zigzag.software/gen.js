@@ -27,7 +27,7 @@ lines.forEach(line => {
             const code = codeBuffer.join('\n')
             runCode(code, ++codeBlockNumber)
             print(`\`\`\`\n${code}\n\`\`\``)
-            print(`[${codeBlockNumber}.wav](http://zigzag.software/${codeBlockNumber}.wav)\n`)
+            print(`[${codeBlockNumber}.wav](/${codeBlockNumber}.wav)\n`)
             codeBuffer.length = 0
         }
         print(line.slice(3))

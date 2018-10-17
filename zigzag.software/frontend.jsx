@@ -3,8 +3,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import { Route, Switch, HashRouter, Link } from 'react-router-dom'
 
-import './reset'
-import './styles'
+import 'mini.css'
 
 const App = () => (
     <div>
@@ -31,16 +30,10 @@ const componentFor = id => {
 class Page extends React.Component {
     render() {
         const { match } = this.props
-        const homeIconBlacklist = ['#helloworld']
         const PageComponent = componentFor(match.params.id)
         return (
             <div>
                 <PageComponent />
-                <p className="nav">
-                    {!_(homeIconBlacklist).includes(window.location.hash) ? (
-                        <span>🏠 <Link to="/helloworld">home</Link></span>
-                    ) : null}
-                </p>
             </div>
         )
     }

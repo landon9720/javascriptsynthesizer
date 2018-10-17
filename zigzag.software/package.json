@@ -19,6 +19,7 @@
   "homepage": "http://zigzag.software",
   "dependencies": {
     "lodash": "^4.17.10",
+    "mini.css": "^3.0.0",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
     "react-markdown": "^2.5.0",
