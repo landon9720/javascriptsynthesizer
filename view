@@ -1,4 +1,2 @@
 #!/bin/bash
-set -ex
 sox -t raw -r 44100 -b 32 -e floating-point -c 1 $1 -n spectrogram -X 80 -Y 700 -h -r -o $1.png
-open $1.png

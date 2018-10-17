@@ -1,7 +1,0 @@
-#!/bin/bash
-set -e
-DIR="${0%/*}"
-node --no-warnings "$DIR/dist/index.js" $1
-
-
-# --inspect-brk

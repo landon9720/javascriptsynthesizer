@@ -1,2 +1,2 @@
-({ value, octave, invert, duration }) => 
-    saw(note({ value, octave, invert })).adsr({ duration: beats(duration) })
+({ value, duration }) => 
+    saw(note(value)).adsr({ duration: beats(duration) })

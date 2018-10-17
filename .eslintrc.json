@@ -25,7 +25,28 @@
             "never"
         ],
         "no-console": [
-            "disabled"
+            "off"
         ]
+    },
+    "globals": {
+        "require": false,
+        "samplesPerFrame": false,
+        "samplesPerBeat": false,
+        "samplesPerSecond": false,
+        "basisFrequency": false,
+        "sin": false,
+        "square": false,
+        "saw": false,
+        "triangle": false,
+        "whitenoise": false,
+        "sum": false,
+        "mix": false,
+        "ordered": false,
+        "value": false,
+        "readFile": false,
+        "bpm": false,
+        "note": false,
+        "seconds": false,
+        "nullAudioProcess": false
     }
 }

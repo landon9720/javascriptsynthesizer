@@ -1,0 +1,27 @@
+master               |           |
+----------------------------------
+synthpart.0.duration |1         1
+synthpart.1.duration | 1       1
+synthpart.2.duration |  1     1
+synthpart.3.duration |   1   1
+synthpart.4.duration |    1 1
+synthpart.5.duration |     1
+----------------------------------
+bpm:125
+trigger1:synthpart
+transpose:scale
+loop:1
+
+synthpart            |    |
+---------------------------
+beep.0.duration      |1
+beep.1.duration      | 1
+beep.2.duration      |  1
+beep.3.duration      |   1
+---------------------------
+divide:4
+
+scale                |            |
+-----------------------------------
+major                |101011010101
+-----------------------------------

@@ -4,7 +4,7 @@
   "description": "",
   "main": "",
   "scripts": {
-    "build": "webpack",
+    "build": "node node_modules/webpack/bin/webpack.js",
     "test": "jest",
     "debug": "node --inspect-brk dist/index.js",
     "play": "play -t raw -r 44100 -b 32 -e floating-point -c 1 tune.raw",
@@ -15,6 +15,7 @@
   "author": "Landon Kuhn",
   "license": "UNLICENSED",
   "dependencies": {
+    "args": "^5.0.0",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.2",
     "lodash": "^4.17.11",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
     "@babel/preset-env": "^7.0.0",
     "babel-core": "^6.26.0",
     "babel-loader": "^8.0.2",

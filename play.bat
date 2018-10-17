@@ -1,0 +1,2 @@
+@echo off
+play -t raw -r 44100 -b 32 -e floating-point -c 1 %1

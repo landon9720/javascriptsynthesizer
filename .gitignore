@@ -1,6 +1,7 @@
 node_modules
 dist
 *.raw
+*.wav
 *.png
 yarn-error.log
 temp

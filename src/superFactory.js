@@ -2,9 +2,7 @@ import _ from 'lodash'
 import { makeAudioFrame, emptyAudioFrame } from './buffer'
 import AudioProcess from './AudioProcess'
 import parameterFunction from './parameterFunction'
-import Sequencer from './Sequencer'
 import fs from 'fs'
-import parser from './parser'
 import { incr } from './stats'
 import chunker from 'stream-chunker'
 import { Readable } from 'stream'
@@ -13,7 +11,6 @@ import { samplesPerFrame } from './buffer'
 export class SuperFactory {
     constructor(options) {
         const { samplesPerSecond, basisFrequency = 440 } = options
-        let samplesPerBeat
         console.assert(samplesPerSecond, 'SuperFactory samplesPerSecond')
         console.assert(basisFrequency, 'SuperFactory basisFrequency ')
 
@@ -265,50 +262,15 @@ export class SuperFactory {
             })
         }
 
-        this.bpm = beatsPerMinute => {
-            const _samplesPerBeat = Math.round((samplesPerSecond * 60) / beatsPerMinute)
-            options.samplesPerBeat = samplesPerBeat = _samplesPerBeat
-        }
-
-        this.beats = beatNumber => {
-            return Math.round(beatNumber * samplesPerBeat)
-        }
-
         this.note = value => {
-            if (_.isInteger(value)) {
-                value = { value, octave: 0, invert: 0 }
-            }
-            let { value: noteNumber, octave, invert } = value
-            console.assert(
-                _.isInteger(noteNumber) && _.isInteger(octave) && _.isInteger(invert),
-                `note bad input: ${JSON.stringify(value)}`
-            )
-            if (invert) {
-                noteNumber *= -1
-                octave *= -1
-            }
+            console.assert(_.isInteger(value), `note bad input: ${value}`)
             const beautifulNumber = Math.pow(2, 1 / 12)
-            const f = basisFrequency * Math.pow(beautifulNumber, octave * 12 + noteNumber)
-            return f
+            return basisFrequency * Math.pow(beautifulNumber, value)
         }
 
-        this.matrix = textInput => parser(textInput)
-
-        this.sequencerToAudioProcess = (sequence, eventToAudioProcess) => {
-            console.assert(sequence instanceof Sequencer, 'sequence instanceof Sequencer')
-            if (eventToAudioProcess instanceof AudioProcess) {
-                const _i = eventToAudioProcess
-                eventToAudioProcess = () => _i
-            }
-            const events = sequence.processSequence()
-            let audioProcess = this.mix(
-                ..._.map(events, e => eventToAudioProcess(e).delay(Math.round(e.time * options.samplesPerBeat)))
-            )
-            if (sequence.duration) {
-                const durationSamples = Math.ceil(sequence.duration * options.samplesPerBeat)
-                audioProcess = audioProcess.duration(durationSamples)
-            }
-            return audioProcess
+        this.seconds = durationSeconds => {
+            console.assert(_.isInteger(durationSeconds), `seconds bad input: ${durationSeconds}`)
+            return durationSeconds * samplesPerSecond
         }
 
         this.nullAudioProcess = new AudioProcess(options, () => () => null)

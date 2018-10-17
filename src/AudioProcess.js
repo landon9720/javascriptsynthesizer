@@ -14,6 +14,7 @@ import { incr } from './stats'
 // AudioProcesses may take parameters
 // Parameters are AudioProcesses
 export default class AudioProcess {
+    static lastAudioProcessInstance = null
     constructor(options, initialize) {
         console.assert(_.isObject(options), 'options must be an object')
         console.assert(_.isFunction(initialize), 'initialize must be a function')
@@ -47,6 +48,7 @@ export default class AudioProcess {
             }
         }
         incr('AudioProcess instances')
+        AudioProcess.lastAudioProcessInstance = this
     }
     duration(durationSamples) {
         console.assert(_.isInteger(durationSamples), `durationSamples ${durationSamples} must be an integer`)
@@ -59,6 +61,9 @@ export default class AudioProcess {
                 return processAudio()
             }
         })
+    }
+    seconds(durationSeconds) {
+        return this.duration(durationSeconds * this.options.samplesPerSecond)
     }
     concat(...inputs) {
         const { ordered } = new SuperFactory(this.options)
@@ -223,17 +228,25 @@ export default class AudioProcess {
             })
         })
     }
-    spawn(commandFactory) {
+    nameTempFile(ext = 'raw') {
+        const dir = './temp'
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir)
+        }
+        const id = nextTempFileId++
+        const tempFile = `${dir}/${id}`
+        const fileName = `${tempFile}.${ext}`
+        return fileName
+    }
+    async writeTempFile() {
+        const fileName = this.nameTempFile()
+        await this.writeFile(fileName)
+        return fileName
+    }
+    mapThroughProcess(commandFactory) {
         console.assert(_.isFunction(commandFactory), 'commandFactory must be a function')
         return new AudioProcess(this.options, async () => {
-            const dir = './temp'
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir)
-            }
-            const id = nextAudioProcessId++
-            const tempFile = `${dir}/${id}`
-            const inputFile = `${tempFile}-in.raw`
-            await this.writeFile(inputFile)
+            const inputFile = await this.writeTempFile()
             const outputFile = `${tempFile}-out.raw`
             const [command, args] = commandFactory(
                 path.join(process.cwd(), inputFile),
@@ -247,36 +260,51 @@ export default class AudioProcess {
         })
     }
     pitch(cents) {
-        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
-        return this.spawn((inputFile, outputFile) => [
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1 -V1`
+        return this.mapThroughProcess((inputFile, outputFile) => [
             'sox',
             `${fopts} ${inputFile} ${fopts} ${outputFile} pitch ${cents} 10`,
         ])
     }
     lowpass(frequency) {
-        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
-        return this.spawn((inputFile, outputFile) => [
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1 -V1`
+        return this.mapThroughProcess((inputFile, outputFile) => [
             'sox',
             `${fopts} ${inputFile} ${fopts} ${outputFile} lowpass ${frequency}`,
         ])
     }
     highpass(frequency) {
-        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
-        return this.spawn((inputFile, outputFile) => [
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1 -V1`
+        return this.mapThroughProcess((inputFile, outputFile) => [
             'sox',
             `${fopts} ${inputFile} ${fopts} ${outputFile} highpass ${frequency}`,
         ])
     }
-    reverb(reverberance) {
-        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1`
-        return this.spawn((inputFile, outputFile) => [
+    reverb(reverberance = 0.27) {
+        const fopts = `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1 -V1`
+        return this.mapThroughProcess((inputFile, outputFile) => [
             'sox',
             `${fopts} ${inputFile} ${fopts} ${outputFile} reverb ${Math.round(reverberance * 100)}`,
         ])
     }
+    async writeWaveFile(fileName) {
+        const tempFileName = await this.writeTempFile()
+        await runProcess(
+            'sox',
+            `-t raw -r ${this.options.samplesPerSecond} -b 32 -e floating-point -c 1 -V1 ${tempFileName} ${fileName}`
+        )
+    }
+    async writeMp3File(fileName) {
+        const waveFileName = this.nameTempFile('wav')
+        await this.writeWaveFile(waveFileName)
+        await runProcess(
+            'lame',
+            `--silent -V0 ${waveFileName} ${fileName}`
+        )
+    }
 }
 
-let nextAudioProcessId = 0
+let nextTempFileId = 0
 
 const a = 5
 const b = -10
@@ -284,14 +312,14 @@ export const sigmoid = x => 1 / (1 + Math.pow(Math.E, a + b * x))
 
 async function runProcess(command, args) {
     await new Promise((resolve, reject) => {
-        const sox = spawn(command, args.split(' '), {})
-        sox.stdout.on('data', data => {
+        const p = spawn(command, args.split(' '), {})
+        p.stdout.on('data', data => {
             console.log(`${data}`)
         })
-        sox.stderr.on('data', data => {
+        p.stderr.on('data', data => {
             console.error(`${data}`)
         })
-        sox.on('close', code => {
+        p.on('close', code => {
             if (code === 0) {
                 resolve()
             } else {

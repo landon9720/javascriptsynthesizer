@@ -8,5 +8,5 @@
             attackFunction: x => x,
             // releaseFunction: x => x,
         })
-        .gain(0.05)
-        .highpass(5000)
+        .gain(0.03)
+        .highpass(6000)

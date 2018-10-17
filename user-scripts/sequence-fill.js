@@ -22,10 +22,10 @@ percussion = percussion.loop(Math.ceil(tune.duration / percussion.duration))
 
 tune = tune.mix(percussion)
 
-tune = sequencerToAudioProcess(tune, ({ channel, value: v, octave, invert, duration: d }) => {
+tune = sequencerToAudioProcess(tune, ({ channel, value: v, duration: d }) => {
     switch (channel) {
         case 'n':
-            return sin(note({ value: v, octave, invert }))
+            return sin(note(v))
                 .adsr({ duration: beats(d) })
                 .gain(0.4)
         case 'hit':

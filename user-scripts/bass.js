@@ -1,2 +1,2 @@
-({ value, octave, invert, duration }) => 
-    sin(note({ value, octave, invert })).adsr({ duration: beats(duration) })
+({ value, duration }) => 
+    sin(note(value)).adsr({ duration: beats(duration) })

@@ -7,7 +7,6 @@ let {
 
 melody      |        |
 m           |00110203
-m.octave    |0
 m.duration  |1
 
 triad |                |
@@ -33,8 +32,8 @@ kick = kick.loop(f)
 hit = hit.loop(f)
 jar = jar.loop(f)
 
-const melody = sequencerToAudioProcess(m, ({ value, octave, invert, duration: d }) =>
-    sin(note({ value, octave, invert }))
+const melody = sequencerToAudioProcess(m, ({ value, duration: d }) =>
+    sin(note(value))
         .adsr({ duration: beats(d) })
         .gain(0.4)
 )
