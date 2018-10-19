@@ -1,4 +1,4 @@
-// Parse content of script.js. Execute each script. Generate markdown output.
+// Parse content of zigzag.software.md. Execute each script. Generate markdown output.
 const fs = require('fs')
 const { spawnSync } = require('child_process')
 
@@ -17,23 +17,23 @@ function print(s = '') {
     fs.appendFileSync(outputFileName, `${s}\n`)
 }
 
-let codeBlockNumber = 0
-const input = fs.readFileSync('script.js', { encoding: 'utf-8' })
+const input = fs.readFileSync('zigzag.software.md', { encoding: 'utf-8' })
 const lines = input.split(/\n/)
-const codeBuffer = []
+
+let codeBlockNumber = 0
+let codeBuffer
 lines.forEach(line => {
-    if (line.startsWith('// ')) {
-        if (codeBuffer.length > 0) {
+    print(line)
+    if (line.startsWith('```')) {
+        if (!codeBuffer) {
+            codeBuffer = []
+        } else {
             const code = codeBuffer.join('\n')
             runCode(code, ++codeBlockNumber)
-            print(`\`\`\`\n${code}\n\`\`\``)
-            print(`[${codeBlockNumber}.wav](/${codeBlockNumber}.wav)\n`)
-            codeBuffer.length = 0
+            print(`<audio controls><source src="/${codeBlockNumber}.wav" type="audio/wav"></audio>\n`)
+            codeBuffer = null
         }
-        print(line.slice(3))
-    } else if (line.length === 0) {
-        print()
-    } else {
+    } else if (codeBuffer) {
         codeBuffer.push(line)
     }
 })

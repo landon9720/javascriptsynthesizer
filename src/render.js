@@ -24,12 +24,11 @@ const {
     whitenoise,
     sum,
     mix,
-    ordered,
+    sequence,
     value,
     readFile,
     bpm,
     note,
-    seconds,
     nullAudioProcess,
 } = new SuperFactory(options)
 
@@ -73,12 +72,11 @@ function invokeUserScript(userScript) {
         'whitenoise',
         'sum',
         'mix',
-        'ordered',
+        'sequence',
         'value',
         'readFile',
         'bpm',
         'note',
-        'seconds',
         'nullAudioProcess',
         userScript
     )
@@ -95,12 +93,11 @@ function invokeUserScript(userScript) {
         whitenoise,
         sum,
         mix,
-        ordered,
+        sequence,
         value,
         readFile,
         bpm,
         note,
-        seconds,
         nullAudioProcess
     )
 }

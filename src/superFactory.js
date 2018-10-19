@@ -185,7 +185,7 @@ export class SuperFactory {
         }
 
         // outputs the input audio processes one at a time, in order
-        this.ordered = (...inputs) => {
+        this.sequence = (...inputs) => {
             return new AudioProcess(options, async () => {
                 const processAudios = await Promise.map(inputs, i => i.initialize(), { concurrency: 10 })
                 return async () => {
@@ -266,11 +266,6 @@ export class SuperFactory {
             console.assert(_.isInteger(value), `note bad input: ${value}`)
             const beautifulNumber = Math.pow(2, 1 / 12)
             return basisFrequency * Math.pow(beautifulNumber, value)
-        }
-
-        this.seconds = durationSeconds => {
-            console.assert(_.isInteger(durationSeconds), `seconds bad input: ${durationSeconds}`)
-            return durationSeconds * samplesPerSecond
         }
 
         this.nullAudioProcess = new AudioProcess(options, () => () => null)

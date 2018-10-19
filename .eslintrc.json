@@ -41,12 +41,11 @@
         "whitenoise": false,
         "sum": false,
         "mix": false,
-        "ordered": false,
+        "sequence": false,
         "value": false,
         "readFile": false,
         "bpm": false,
         "note": false,
-        "seconds": false,
         "nullAudioProcess": false
     }
 }

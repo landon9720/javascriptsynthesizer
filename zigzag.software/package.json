@@ -5,7 +5,7 @@
   "main": "",
   "scripts": {
     "gen": "node gen.js",
-    "build": "webpack -p --display-modules",
+    "build": "webpack -p",
     "deploy": "aws s3 sync --acl public-read --delete ./dist/ s3://zigzag.software/",
     "serv": "webpack-dev-server --content-base dist/ --host 0.0.0.0",
     "clean": "rm -rf ./node_modules; rm -rf ./dist"
@@ -22,7 +22,6 @@
     "mini.css": "^3.0.0",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
-    "react-markdown": "^2.5.0",
     "react-router-dom": "^4.2.2"
   },
   "devDependencies": {

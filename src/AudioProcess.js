@@ -50,24 +50,21 @@ export default class AudioProcess {
         incr('AudioProcess instances')
         AudioProcess.lastAudioProcessInstance = this
     }
-    duration(durationSamples) {
-        console.assert(_.isInteger(durationSamples), `durationSamples ${durationSamples} must be an integer`)
+    duration(durationFrames) {
+        console.assert(_.isInteger(durationFrames), `durationFrames ${durationFrames} must be an integer`)
         return new AudioProcess(this.options, async () => {
             const processAudio = await this.initialize()
             return frameCounter => {
-                if (frameCounter * samplesPerFrame > durationSamples) {
+                if (frameCounter > durationFrames) {
                     return
                 }
                 return processAudio()
             }
         })
     }
-    seconds(durationSeconds) {
-        return this.duration(durationSeconds * this.options.samplesPerSecond)
-    }
     concat(...inputs) {
-        const { ordered } = new SuperFactory(this.options)
-        return ordered(...[this, ...inputs])
+        const { sequence } = new SuperFactory(this.options)
+        return sequence(...[this, ...inputs])
     }
     loop(times) {
         console.assert(_.isInteger(times), 'times must be a number')
@@ -182,6 +179,9 @@ export default class AudioProcess {
         decayFunction = sigmoid,
         releaseFunction = sigmoid,
     } = {}) {
+        if (arguments.length === 1 && _.isNumber(arguments[0])) {
+            duration = arguments[0]
+        }
         console.assert(A && R)
         S = S || (duration || this.options.samplesPerSecond) - A - D - R
         console.assert(S >= 0, `S ${S} < 0`)
@@ -211,7 +211,7 @@ export default class AudioProcess {
                 }
                 return outputBuffer
             }
-        }).duration(Math.ceil(A + D + S + R))
+        }).duration(Math.ceil(((A + D + S + R) / samplesPerFrame)))
     }
     async writeFile(fileName) {
         const writer = fs.createWriteStream(fileName)
